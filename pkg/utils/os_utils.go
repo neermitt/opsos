@@ -3,8 +3,10 @@ package utils
 import (
 	"fmt"
 	"os"
+	"runtime"
 
 	"github.com/fatih/color"
+	"github.com/neermitt/opsos/pkg/globals"
 )
 
 // PrintErrorToStdErrorAndExit prints errors to std.Error and exits with an error code
@@ -34,4 +36,21 @@ func PrintError(err error) {
 	if err != nil {
 		color.Red("%s\n", err)
 	}
+}
+
+func GetSystemDir() string {
+	// https://pureinfotech.com/list-environment-variables-windows-10/
+	// https://docs.microsoft.com/en-us/windows/deployment/usmt/usmt-recognized-environment-variables
+	// https://softwareengineering.stackexchange.com/questions/299869/where-is-the-appropriate-place-to-put-application-configuration-files-for-each-p
+	// https://stackoverflow.com/questions/37946282/why-does-appdata-in-windows-7-seemingly-points-to-wrong-folder
+	if runtime.GOOS == "windows" {
+		appDataDir := os.Getenv(globals.WindowsAppDataEnvVar)
+		if len(appDataDir) > 0 {
+			return appDataDir
+		}
+	} else {
+		return globals.SystemDirConfigFilePath
+	}
+
+	return ""
 }
