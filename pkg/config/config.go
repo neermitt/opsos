@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	config     Configuration
+	Config     Configuration
 	intialized bool = false
 )
 
@@ -77,6 +77,13 @@ func InitConfig() error {
 
 	if !configFound {
 		return fmt.Errorf("%s' CLI config files not found in any of the searched paths: system dir, home dir, current dir, ENV vars", globals.ConfigFileName)
+	}
+
+	// https://gist.github.com/chazcheadle/45bf85b793dea2b71bd05ebaa3c28644
+	// https://sagikazarmark.hu/blog/decoding-custom-formats-with-viper/
+	err = v.Unmarshal(&Config)
+	if err != nil {
+		return err
 	}
 
 	return nil

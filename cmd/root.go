@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"github.com/neermitt/opsos/pkg/config"
-	"github.com/neermitt/opsos/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -11,6 +10,17 @@ var RootCmd = &cobra.Command{
 	Use:   "opsos",
 	Short: "Universal Tool for DevOps and Cloud Automation",
 	Long:  `'opsos'' is a universal tool for DevOps and cloud automation used for provisioning, managing and orchestrating workflows across various toolchains`,
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		// Skip config load if version command
+		if cmd == versionCmd {
+			return nil
+		}
+		// InitConfig finds and merges CLI configurations in the following order:
+		// system dir, home dir, current dir, ENV vars, command-line arguments
+		// Here we need the custom commands from the config
+		err := config.InitConfig()
+		return err
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -21,17 +31,10 @@ func Execute() error {
 
 func init() {
 	cobra.OnInitialize(initConfig)
-
-	// InitConfig finds and merges CLI configurations in the following order:
-	// system dir, home dir, current dir, ENV vars, command-line arguments
-	// Here we need the custom commands from the config
-	err := config.InitConfig()
-	if err != nil {
-		utils.PrintErrorToStdErrorAndExit(err)
-	}
 }
 
 func initConfig() {
+
 }
 
 // https://www.sobyte.net/post/2021-12/create-cli-app-with-cobra/
