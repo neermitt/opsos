@@ -1,0 +1,17 @@
+package cmd
+
+import (
+	"github.com/spf13/cobra"
+)
+
+// describeCmd describes configuration for stacks and components
+var describeCmd = &cobra.Command{
+	Use:                "describe",
+	Short:              "Execute 'describe' commands",
+	Long:               `This command shows configuration for CLI, stacks and components`,
+	FParseErrWhitelist: cobra.FParseErrWhitelist{UnknownFlags: true},
+}
+
+func init() {
+	RootCmd.AddCommand(describeCmd)
+}

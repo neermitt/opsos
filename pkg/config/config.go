@@ -13,25 +13,16 @@ import (
 	"go.uber.org/zap"
 )
 
-var (
-	Config     Configuration
-	intialized bool = false
-)
-
 // InitConfig finds and merges CLI configurations in the following order: system dir, home dir, current dir, ENV vars, command-line arguments
 // https://dev.to/techschoolguru/load-config-from-file-environment-variables-in-golang-with-viper-2j2d
 // https://medium.com/@bnprashanth256/reading-configuration-files-and-environment-variables-in-go-golang-c2607f912b63
-func InitConfig() error {
+func InitConfig() (*Configuration, error) {
 	// Config is loaded from the following locations (from lower to higher priority):
 	// system dir (`/usr/local/etc/opsos` on Linux, `%LOCALAPPDATA%/opsos` on Windows)
 	// home dir (~/.opsos)
 	// current directory
 	// ENV vars
 	// Command-line arguments
-
-	if intialized {
-		return nil
-	}
 
 	logging.Logger.Info("\nSearching, processing and merging opsos CLI configurations (opsos.yaml) in the following order:", zap.Strings("order", []string{"system dir", "home dir", "current dir", "ENV vars", "command-line arguments"}))
 
@@ -42,13 +33,13 @@ func InitConfig() error {
 	// Process config in home dir
 	homeDir, err := homedir.Dir()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Process config in the current dir
 	cwd, err := os.Getwd()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	configDirs := []string{utils.GetSystemDir(), path.Join(homeDir, ".opsos"), cwd}
@@ -67,7 +58,7 @@ func InitConfig() error {
 		if len(cd) > 0 {
 			found, err := processConfigFile(cd, v)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			if found {
 				configFound = true
@@ -76,17 +67,18 @@ func InitConfig() error {
 	}
 
 	if !configFound {
-		return fmt.Errorf("%s' CLI config files not found in any of the searched paths: system dir, home dir, current dir, ENV vars", globals.ConfigFileName)
+		return nil, fmt.Errorf("%s' CLI config files not found in any of the searched paths: system dir, home dir, current dir, ENV vars", globals.ConfigFileName)
 	}
 
 	// https://gist.github.com/chazcheadle/45bf85b793dea2b71bd05ebaa3c28644
 	// https://sagikazarmark.hu/blog/decoding-custom-formats-with-viper/
-	err = v.Unmarshal(&Config)
+	var config Configuration
+	err = v.Unmarshal(&config)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return &config, nil
 }
 
 // https://github.com/NCAR/go-figure
