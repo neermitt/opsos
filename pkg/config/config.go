@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strings"
 
+	"github.com/go-playground/validator"
 	"github.com/mitchellh/go-homedir"
 	"github.com/neermitt/opsos/pkg/globals"
 	"github.com/neermitt/opsos/pkg/logging"
@@ -26,9 +28,25 @@ func InitConfig() (*Configuration, error) {
 
 	logging.Logger.Info("\nSearching, processing and merging opsos CLI configurations (opsos.yaml) in the following order:", zap.Strings("order", []string{"system dir", "home dir", "current dir", "ENV vars", "command-line arguments"}))
 
-	v := viper.New()
-	v.SetConfigType("yaml")
-	v.SetTypeByDefaultValue(true)
+	viper.SetEnvPrefix("OPSOS")
+	viper.AutomaticEnv()
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.SetConfigType("yaml")
+	viper.SetTypeByDefaultValue(true)
+
+	viper.SetDefault("base_path", "")
+	viper.SetDefault("stacks.base_path", "")
+	viper.SetDefault("stacks.included_paths", nil)
+	viper.SetDefault("stacks.excluded_paths", nil)
+	viper.SetDefault("stacks.name_pattern", "")
+	viper.SetDefault("components.terraform.base_path", "")
+	viper.SetDefault("components.terraform.apply_auto_approve", false)
+	viper.SetDefault("components.terraform.deploy_run_init", false)
+	viper.SetDefault("components.terraform.auto_generate_backend_file", false)
+	viper.SetDefault("components.helmfile.base_path", "")
+	viper.SetDefault("components.helmfile.kube_config_path", "")
+	viper.SetDefault("components.helmfile.cluster_name_pattern", "")
+	viper.SetDefault("workflows.base_path", "")
 
 	// Process config in home dir
 	homeDir, err := homedir.Dir()
@@ -56,7 +74,7 @@ func InitConfig() (*Configuration, error) {
 
 	for _, cd := range configDirs {
 		if len(cd) > 0 {
-			found, err := processConfigFile(cd, v)
+			found, err := processConfigFile(cd)
 			if err != nil {
 				return nil, err
 			}
@@ -73,8 +91,13 @@ func InitConfig() (*Configuration, error) {
 	// https://gist.github.com/chazcheadle/45bf85b793dea2b71bd05ebaa3c28644
 	// https://sagikazarmark.hu/blog/decoding-custom-formats-with-viper/
 	var config Configuration
-	err = v.Unmarshal(&config)
+	err = viper.Unmarshal(&config)
 	if err != nil {
+		return nil, err
+	}
+
+	validate := validator.New()
+	if err = validate.Struct(&config); err != nil {
 		return nil, err
 	}
 
@@ -84,7 +107,7 @@ func InitConfig() (*Configuration, error) {
 // https://github.com/NCAR/go-figure
 // https://github.com/spf13/viper/issues/181
 // https://medium.com/@bnprashanth256/reading-configuration-files-and-environment-variables-in-go-golang-c2607f912b63
-func processConfigFile(configDir string, v *viper.Viper) (bool, error) {
+func processConfigFile(configDir string) (bool, error) {
 	logger := logging.Logger.With(zap.String("path", configDir))
 
 	configFile := path.Join(configDir, globals.ConfigFileName)
@@ -107,7 +130,7 @@ func processConfigFile(configDir string, v *viper.Viper) (bool, error) {
 		}
 	}(reader)
 
-	err = v.MergeConfig(reader)
+	err = viper.MergeConfig(reader)
 	if err != nil {
 		return false, err
 	}

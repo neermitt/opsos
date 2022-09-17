@@ -28,8 +28,8 @@ type Helmfile struct {
 }
 
 type Stacks struct {
-	BasePath      string   `yaml:"base_path" json:"base_path" mapstructure:"base_path"`
-	IncludedPaths []string `yaml:"included_paths" json:"included_paths" mapstructure:"included_paths"`
+	BasePath      string   `yaml:"base_path" json:"base_path" mapstructure:"base_path" validate:"required"`
+	IncludedPaths []string `yaml:"included_paths" json:"included_paths" mapstructure:"included_paths" validate:"required"`
 	ExcludedPaths []string `yaml:"excluded_paths" json:"excluded_paths" mapstructure:"excluded_paths"`
 	NamePattern   string   `yaml:"name_pattern" json:"name_pattern" mapstructure:"name_pattern"`
 }
