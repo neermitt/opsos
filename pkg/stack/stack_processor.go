@@ -1,64 +1,114 @@
 package stack
 
 import (
+	"github.com/neermitt/opsos/pkg/merge"
+	"gopkg.in/yaml.v3"
 	"path/filepath"
 	"sync"
 
-	"github.com/neermitt/opsos/pkg/merge"
 	"github.com/spf13/afero"
-	"gopkg.in/yaml.v3"
 )
 
-func ProcessYAMLFiles(afs afero.Fs, stackPaths []string) {
-
-	count := len(stackPaths)
-
-	var wg sync.WaitGroup
-
-	wg.Add(count)
-
-	for i, sp := range stackPaths {
-		go func(i int, sp string) {
-			defer wg.Done()
-
-			ProcessYAMLFile(afs, sp)
-		}(i, sp)
-	}
+type Stack interface {
+	Name() string
 }
 
-type stack struct {
-	Import []string       `yaml:"import,omitempty"`
-	Config map[string]any `yaml:",inline"`
+type StackProcessor interface {
+	GetStack(name string) (Stack, error)
+	GetStacks(names []string) ([]Stack, error)
 }
 
-func ProcessYAMLFile(afs afero.Fs, sp string) (*stack, error) {
-	filePath := sp
-	if ext := filepath.Ext(sp); len(ext) == 0 {
-		filePath = sp + ".yaml"
-	}
-	data, err := afero.ReadFile(afs, filePath)
+func NewStackProcessor(fs afero.Fs) StackProcessor {
+	return &stackProcessor{fs: fs}
+}
+
+type stackProcessor struct {
+	fs afero.Fs
+}
+
+func (sp *stackProcessor) GetStack(name string) (Stack, error) {
+	return sp.loadStackFile(name)
+}
+
+func (sp *stackProcessor) GetStacks(names []string) ([]Stack, error) {
+	stks, err := sp.loadStackFiles(names)
 	if err != nil {
 		return nil, err
 	}
-	out := &stack{}
+	out := make([]Stack, len(stks))
+	for i, stk := range stks {
+		out[i] = stk
+	}
+	return out, err
+}
+
+func (sp *stackProcessor) loadStackFile(name string) (*stack, error) {
+	filePath := name
+	if ext := filepath.Ext(name); len(ext) == 0 {
+		filePath = name + ".yaml"
+	}
+	data, err := afero.ReadFile(sp.fs, filePath)
+	if err != nil {
+		return nil, err
+	}
+	out := &stack{name: name}
 	err = yaml.Unmarshal(data, out)
 	if err != nil {
 		return nil, err
 	}
 
-	imports := make([]*stack, len(out.Import))
 	importConfigs := make([]map[string]any, len(out.Import))
 
-	for i, imp := range out.Import {
-		is, err := ProcessYAMLFile(afs, imp)
-		if err != nil {
-			return nil, err
-		}
-		imports[i] = is
-		importConfigs[i] = is.Config
+	imports, err := sp.loadStackFiles(out.Import)
+
+	for i, imp := range imports {
+		importConfigs[i] = imp.Config
 	}
 
 	out.Config, err = merge.Merge(append(importConfigs, out.Config))
 
 	return out, nil
+}
+
+func (sp *stackProcessor) loadStackFiles(names []string) ([]*stack, error) {
+
+	count := len(names)
+
+	var wg sync.WaitGroup
+
+	wg.Add(count)
+	stacks := make([]*stack, count)
+
+	var errorResult error
+
+	for i, name := range names {
+		go func(i int, name string) {
+			defer wg.Done()
+
+			stk, err := sp.loadStackFile(name)
+			if err != nil {
+				errorResult = err
+				return
+			}
+			stacks[i] = stk
+		}(i, name)
+	}
+
+	wg.Wait()
+
+	if errorResult != nil {
+		return nil, errorResult
+	}
+
+	return stacks, nil
+}
+
+type stack struct {
+	name   string         `yaml:"_"`
+	Import []string       `yaml:"import,omitempty"`
+	Config map[string]any `yaml:",inline"`
+}
+
+func (s *stack) Name() string {
+	return s.name
 }

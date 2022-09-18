@@ -10,38 +10,31 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var fs afero.Fs
+
+func TestMain(m *testing.M) {
+	stacksPath, _ := filepath.Abs("../../examples/complete/stacks")
+	fs = afero.NewBasePathFs(afero.NewOsFs(), stacksPath)
+	m.Run()
+}
+
 func TestStackProcessorNoDependency(t *testing.T) {
-	stacksPath, err := filepath.Abs("../../examples/complete/stacks")
+	proc := stack.NewStackProcessor(fs)
+	s, err := proc.GetStack("orgs/cp/_defaults.yaml")
 	require.NoError(t, err)
-	afs := afero.NewBasePathFs(afero.NewOsFs(), stacksPath)
-
-	s, err := stack.ProcessYAMLFile(afs, "orgs/cp/_defaults.yaml")
-
-	require.NoError(t, err)
-
 	assert.NotNil(t, s)
 }
 
 func TestStackProcessorWithoutFileExt(t *testing.T) {
-	stacksPath, err := filepath.Abs("../../examples/complete/stacks")
+	proc := stack.NewStackProcessor(fs)
+	s, err := proc.GetStack("orgs/cp/_defaults")
 	require.NoError(t, err)
-	afs := afero.NewBasePathFs(afero.NewOsFs(), stacksPath)
-
-	s, err := stack.ProcessYAMLFile(afs, "orgs/cp/_defaults")
-
-	require.NoError(t, err)
-
 	assert.NotNil(t, s)
 }
 
 func TestStackProcessorSingleDependency(t *testing.T) {
-	stacksPath, err := filepath.Abs("../../examples/complete/stacks")
+	proc := stack.NewStackProcessor(fs)
+	s, err := proc.GetStack("orgs/cp/tenant1/_defaults")
 	require.NoError(t, err)
-	afs := afero.NewBasePathFs(afero.NewOsFs(), stacksPath)
-
-	s, err := stack.ProcessYAMLFile(afs, "orgs/cp/tenant1/_defaults.yaml")
-
-	require.NoError(t, err)
-
 	assert.NotNil(t, s)
 }
