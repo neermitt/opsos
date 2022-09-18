@@ -48,7 +48,11 @@ func (sp *stackProcessor) GetStackNames() ([]string, error) {
 }
 
 func (sp *stackProcessor) GetStack(name string) (Stack, error) {
-	return sp.loadAndProcessStackFile(name)
+	stk, err := sp.loadAndProcessStackFile(name)
+	if err != nil {
+		return nil, err
+	}
+	return &ProcessedStack{StackName: stk.name}, nil
 }
 
 func (sp *stackProcessor) GetStacks(names []string) ([]Stack, error) {
@@ -58,7 +62,7 @@ func (sp *stackProcessor) GetStacks(names []string) ([]Stack, error) {
 	}
 	out := make([]Stack, len(stks))
 	for i, stk := range stks {
-		out[i] = stk
+		out[i] = &ProcessedStack{StackName: stk.name}
 	}
 	return out, err
 }
@@ -150,6 +154,19 @@ type stack struct {
 	Config map[string]any `yaml:",inline"`
 }
 
-func (s *stack) Name() string {
-	return s.name
+type ProcessedStack struct {
+	StackName  string
+	Components Components
+}
+
+func (s *ProcessedStack) Name() string {
+	return s.StackName
+}
+
+type Components struct {
+	Helmfiles map[string]HelmfileComponent
+}
+
+type HelmfileComponent struct {
+	Vars map[string]any
 }
