@@ -6,6 +6,7 @@ require (
 	github.com/bmatcuk/doublestar/v4 v4.2.0
 	github.com/fatih/color v1.13.0
 	github.com/go-playground/validator v9.31.0+incompatible
+	github.com/goburrow/cache v0.1.4
 	github.com/imdario/mergo v0.3.13
 	github.com/json-iterator/go v1.1.12
 	github.com/mitchellh/go-homedir v1.1.0

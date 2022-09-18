@@ -38,3 +38,15 @@ func TestStackProcessorSingleDependency(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, s)
 }
+
+func TestStackProcessorMultipleFiles(t *testing.T) {
+	proc := stack.NewStackProcessor(fs)
+	s, err := proc.GetStacks([]string{
+		"orgs/cp/tenant1/dev/us-east-2",
+		"orgs/cp/tenant1/dev/us-east-2-extras",
+		"orgs/cp/tenant1/prod/us-east-2",
+		"orgs/cp/tenant1/test1/us-east-2",
+	})
+	require.NoError(t, err)
+	assert.Len(t, s, 4)
+}
