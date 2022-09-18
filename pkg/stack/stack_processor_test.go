@@ -19,34 +19,31 @@ func TestMain(m *testing.M) {
 }
 
 func TestStackProcessorNoDependency(t *testing.T) {
-	proc := stack.NewStackProcessor(fs)
+	proc := stack.NewStackProcessor(fs, []string{"orgs/**/*"}, []string{"**/_defaults.yaml"})
 	s, err := proc.GetStack("orgs/cp/_defaults.yaml")
 	require.NoError(t, err)
 	assert.NotNil(t, s)
 }
 
 func TestStackProcessorWithoutFileExt(t *testing.T) {
-	proc := stack.NewStackProcessor(fs)
+	proc := stack.NewStackProcessor(fs, []string{"orgs/**/*"}, []string{"**/_defaults.yaml"})
 	s, err := proc.GetStack("orgs/cp/_defaults")
 	require.NoError(t, err)
 	assert.NotNil(t, s)
 }
 
 func TestStackProcessorSingleDependency(t *testing.T) {
-	proc := stack.NewStackProcessor(fs)
+	proc := stack.NewStackProcessor(fs, []string{"orgs/**/*"}, []string{"**/_defaults.yaml"})
 	s, err := proc.GetStack("orgs/cp/tenant1/_defaults")
 	require.NoError(t, err)
 	assert.NotNil(t, s)
 }
 
 func TestStackProcessorMultipleFiles(t *testing.T) {
-	proc := stack.NewStackProcessor(fs)
-	s, err := proc.GetStacks([]string{
-		"orgs/cp/tenant1/dev/us-east-2",
-		"orgs/cp/tenant1/dev/us-east-2-extras",
-		"orgs/cp/tenant1/prod/us-east-2",
-		"orgs/cp/tenant1/test1/us-east-2",
-	})
+	proc := stack.NewStackProcessor(fs, []string{"orgs/**/*"}, []string{"**/_defaults.yaml"})
+	names, err := proc.GetStackNames()
 	require.NoError(t, err)
-	assert.Len(t, s, 4)
+	s, err := proc.GetStacks(names)
+	require.NoError(t, err)
+	assert.Len(t, s, 15)
 }

@@ -20,6 +20,7 @@ bin/
 **/build-harness
 **/build
 **/dist
+**/release
 
 # IDEs
 .vscode/

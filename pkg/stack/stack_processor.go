@@ -1,13 +1,14 @@
 package stack
 
 import (
-	"fmt"
 	"gopkg.in/yaml.v3"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/goburrow/cache"
 	"github.com/neermitt/opsos/pkg/merge"
+	"github.com/neermitt/opsos/pkg/utils/fs"
 	"github.com/spf13/afero"
 )
 
@@ -16,24 +17,34 @@ type Stack interface {
 }
 
 type StackProcessor interface {
+	GetStackNames() ([]string, error)
 	GetStack(name string) (Stack, error)
 	GetStacks(names []string) ([]Stack, error)
 }
 
-func NewStackProcessor(fs afero.Fs) StackProcessor {
-	sp := &stackProcessor{fs: fs}
+func NewStackProcessor(source afero.Fs, includePaths []string, excludePaths []string) StackProcessor {
+	sp := &stackProcessor{fs: source, fl: fs.NewMatcherFs(source, matcher(includePaths, excludePaths))}
 	sp.cache = cache.NewLoadingCache(func(key cache.Key) (cache.Value, error) {
-		fmt.Println(key)
 		return sp.loadAndProcessStackFile(key.(string))
-	}, cache.WithRemovalListener(func(key cache.Key, value cache.Value) {
-		fmt.Printf("Remove: %s \n", key)
-	}))
+	})
 	return sp
 }
 
 type stackProcessor struct {
 	fs    afero.Fs
+	fl    afero.Fs
 	cache cache.LoadingCache
+}
+
+func (sp *stackProcessor) GetStackNames() ([]string, error) {
+	files, err := fs.AllFiles(sp.fl)
+	if err != nil {
+		return nil, err
+	}
+	for i, val := range files {
+		files[i] = strings.TrimSuffix(val, filepath.Ext(val))
+	}
+	return files, err
 }
 
 func (sp *stackProcessor) GetStack(name string) (Stack, error) {
@@ -114,13 +125,17 @@ func (sp *stackProcessor) loadAndProcessStackFile(name string) (*stack, error) {
 
 func (sp *stackProcessor) loadStackFile(name string) (*stack, error) {
 	filePath := name
-	if ext := filepath.Ext(name); len(ext) == 0 {
+	ext := filepath.Ext(name)
+	if ext := ext; len(ext) == 0 {
 		filePath = name + ".yaml"
+	} else {
+		name = strings.TrimSuffix(name, ext)
 	}
 	data, err := afero.ReadFile(sp.fs, filePath)
 	if err != nil {
 		return nil, err
 	}
+
 	out := &stack{name: name}
 	err = yaml.Unmarshal(data, out)
 	if err != nil {

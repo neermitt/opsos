@@ -1,4 +1,4 @@
-base_path: "examples/complete"
+base_path: "."
 
 stacks:
   base_path: "stacks"
