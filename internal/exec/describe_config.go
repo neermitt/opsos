@@ -8,18 +8,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type DescribeConfigOptions struct {
+	Format string
+}
+
 // ExecuteDescribeConfig executes `describe config` command
-func ExecuteDescribeConfig(cmd *cobra.Command, args []string) error {
-	flags := cmd.Flags()
-
-	format, err := flags.GetString("format")
-	if err != nil {
-		return err
-	}
-
+func ExecuteDescribeConfig(cmd *cobra.Command, options DescribeConfigOptions) error {
 	conf := cmd.Context().Value("config").(*config.Configuration)
 
-	err = formatters.Get(format)(os.Stdout, conf)
+	err := formatters.Get(options.Format)(os.Stdout, conf)
 	if err != nil {
 		return err
 	}

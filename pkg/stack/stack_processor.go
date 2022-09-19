@@ -12,14 +12,23 @@ import (
 	"github.com/spf13/afero"
 )
 
-type Stack interface {
-	Name() string
+type Stack struct {
+	Name       string
+	Components Components
+}
+
+type Components struct {
+	Helmfiles map[string]HelmfileComponent
+}
+
+type HelmfileComponent struct {
+	Vars map[string]any
 }
 
 type StackProcessor interface {
 	GetStackNames() ([]string, error)
-	GetStack(name string) (Stack, error)
-	GetStacks(names []string) ([]Stack, error)
+	GetStack(name string) (*Stack, error)
+	GetStacks(names []string) ([]*Stack, error)
 }
 
 func NewStackProcessor(source afero.Fs, includePaths []string, excludePaths []string) StackProcessor {
@@ -47,22 +56,22 @@ func (sp *stackProcessor) GetStackNames() ([]string, error) {
 	return files, err
 }
 
-func (sp *stackProcessor) GetStack(name string) (Stack, error) {
+func (sp *stackProcessor) GetStack(name string) (*Stack, error) {
 	stk, err := sp.loadAndProcessStackFile(name)
 	if err != nil {
 		return nil, err
 	}
-	return &ProcessedStack{StackName: stk.name}, nil
+	return &Stack{Name: stk.name}, nil
 }
 
-func (sp *stackProcessor) GetStacks(names []string) ([]Stack, error) {
+func (sp *stackProcessor) GetStacks(names []string) ([]*Stack, error) {
 	stks, err := sp.checkCacheOrLoadStackFiles(names)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]Stack, len(stks))
+	out := make([]*Stack, len(stks))
 	for i, stk := range stks {
-		out[i] = &ProcessedStack{StackName: stk.name}
+		out[i] = &Stack{Name: stk.name}
 	}
 	return out, err
 }
@@ -152,21 +161,4 @@ type stack struct {
 	name   string         `yaml:"_"`
 	Import []string       `yaml:"import,omitempty"`
 	Config map[string]any `yaml:",inline"`
-}
-
-type ProcessedStack struct {
-	StackName  string
-	Components Components
-}
-
-func (s *ProcessedStack) Name() string {
-	return s.StackName
-}
-
-type Components struct {
-	Helmfiles map[string]HelmfileComponent
-}
-
-type HelmfileComponent struct {
-	Vars map[string]any
 }
