@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"context"
-
 	"github.com/neermitt/opsos/pkg/config"
 	"github.com/spf13/cobra"
 )
@@ -20,12 +18,12 @@ var RootCmd = &cobra.Command{
 		// InitConfig finds and merges CLI configurations in the following order:
 		// system dir, home dir, current dir, ENV vars, command-line arguments
 		// Here we need the custom commands from the config
-		config, err := config.InitConfig()
+		conf, err := config.InitConfig()
 		if err != nil {
 			return err
 		}
 
-		cmd.SetContext(context.WithValue(cmd.Context(), "config", config))
+		cmd.SetContext(config.SetConfig(cmd.Context(), conf))
 		return nil
 	},
 }

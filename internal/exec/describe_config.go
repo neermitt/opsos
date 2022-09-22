@@ -14,7 +14,7 @@ type DescribeConfigOptions struct {
 
 // ExecuteDescribeConfig executes `describe config` command
 func ExecuteDescribeConfig(cmd *cobra.Command, options DescribeConfigOptions) error {
-	conf := cmd.Context().Value("config").(*config.Configuration)
+	conf := config.GetConfig(cmd.Context())
 
 	err := formatters.Get(options.Format)(os.Stdout, conf)
 	if err != nil {
