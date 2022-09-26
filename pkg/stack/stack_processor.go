@@ -1,6 +1,8 @@
 package stack
 
 import (
+	"context"
+	"fmt"
 	"gopkg.in/yaml.v3"
 	"path"
 	"path/filepath"
@@ -11,6 +13,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/neermitt/opsos/pkg/config"
 	"github.com/neermitt/opsos/pkg/merge"
+	"github.com/neermitt/opsos/pkg/plugins"
 	"github.com/neermitt/opsos/pkg/stack/schema"
 	"github.com/neermitt/opsos/pkg/utils/fs"
 	"github.com/spf13/afero"
@@ -18,17 +21,12 @@ import (
 
 type Stack struct {
 	Name           string
-	ComponentTypes map[string]ComponentMap
+	ComponentTypes map[string]ComponentConfigMap
 }
 
-type ComponentMap struct {
-	Components map[string]Component
-}
+type ComponentConfigMap map[string]ComponentConfig
 
-type Component struct {
-	Vars map[string]any
-	Envs map[string]string
-}
+type ComponentConfig map[string]any
 
 type StackProcessor interface {
 	GetStackNames() ([]string, error)
@@ -190,35 +188,39 @@ func ProcessStackConfig(stk *stack) (*Stack, error) {
 	if err != nil {
 		return nil, err
 	}
-	componentTypeMap, err := processComponentType(stackConfig, "helmfile")
-	if err != nil {
-		return nil, err
+
+	providers := plugins.GetProviders()
+
+	componentTypes := make(map[string]ComponentConfigMap, len(providers))
+
+	for _, providerName := range providers {
+		componentTypeMap, err := processComponentType(stackConfig, providerName)
+		if err != nil {
+			return nil, err
+		}
+		componentTypes[providerName] = componentTypeMap
+
 	}
-	return &Stack{Name: stk.name, ComponentTypes: map[string]ComponentMap{
-		"helmfile": componentTypeMap,
-	}}, nil
+
+	return &Stack{Name: stk.name, ComponentTypes: componentTypes}, nil
 }
 
-func processComponentType(stackConfig schema.StackConfig, componentType string) (ComponentMap, error) {
-	componentTypeVars, err := merge.Merge([]map[string]any{stackConfig.Vars, stackConfig.ComponentTypeSettings[componentType].Vars})
-	if err != nil {
-		return ComponentMap{}, err
+func processComponentType(stackConfig schema.StackConfig, componentType string) (ComponentConfigMap, error) {
+
+	provider, ok := plugins.GetProvider(componentType)
+	if !ok {
+		return ComponentConfigMap{}, fmt.Errorf("provider plugin not found for componentType: %s", componentType)
 	}
-	componentsMap := ComponentMap{Components: map[string]Component{}}
+
+	providerStackContext := provider.InitStackContext(context.Background(), stackConfig)
+
+	componentsMap := ComponentConfigMap{}
 	for k, v := range stackConfig.Components.Types[componentType] {
-		component, err := processComponentConfig(v, componentTypeVars)
+		componentExecConfig, err := provider.ProcessComponentConfig(providerStackContext, v)
 		if err != nil {
-			return ComponentMap{}, err
+			return ComponentConfigMap{}, err
 		}
-		componentsMap.Components[k] = component
+		componentsMap[k] = componentExecConfig
 	}
 	return componentsMap, nil
-}
-
-func processComponentConfig(conf schema.ComponentConfig, componentTypeVars map[string]any) (Component, error) {
-	componentVars, err := merge.Merge([]map[string]any{componentTypeVars, conf.Vars})
-	if err != nil {
-		return Component{}, err
-	}
-	return Component{Vars: componentVars}, nil
 }

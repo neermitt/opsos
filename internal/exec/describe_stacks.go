@@ -18,17 +18,8 @@ type DescribeStackOptions struct {
 	Stack      string
 }
 
-type helmfileOutput struct {
-	Vars map[string]any
-	Envs map[string]string
-}
-
-type componentsOutput struct {
-	Helmfile map[string]helmfileOutput
-}
-
 type describeStackOutput struct {
-	Components componentsOutput
+	Components map[string]stack.ComponentConfigMap
 }
 
 type describeStacksOutput struct {
@@ -70,14 +61,8 @@ func ExecuteDescribeStacks(cmd *cobra.Command, options DescribeStackOptions) err
 	output := describeStacksOutput{Stacks: make(map[string]describeStackOutput)}
 
 	for _, stk := range stacks {
-		helmfileComponents := map[string]helmfileOutput{}
-		for k, v := range stk.ComponentTypes["helmfile"].Components {
-			helmfileComponents[k] = helmfileOutput{Vars: v.Vars, Envs: v.Envs}
-		}
 		output.Stacks[stk.Name] = describeStackOutput{
-			Components: componentsOutput{
-				Helmfile: helmfileComponents,
-			},
+			Components: stk.ComponentTypes,
 		}
 	}
 
