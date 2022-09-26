@@ -2,27 +2,32 @@ package stack
 
 import (
 	"gopkg.in/yaml.v3"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
 
 	"github.com/goburrow/cache"
+	"github.com/mitchellh/mapstructure"
+	"github.com/neermitt/opsos/pkg/config"
 	"github.com/neermitt/opsos/pkg/merge"
+	"github.com/neermitt/opsos/pkg/stack/schema"
 	"github.com/neermitt/opsos/pkg/utils/fs"
 	"github.com/spf13/afero"
 )
 
 type Stack struct {
-	Name       string
-	Components Components
+	Name           string
+	ComponentTypes map[string]ComponentMap
 }
 
-type Components struct {
-	Helmfiles map[string]HelmfileComponent
+type ComponentMap struct {
+	Components map[string]Component
 }
 
-type HelmfileComponent struct {
+type Component struct {
 	Vars map[string]any
+	Envs map[string]string
 }
 
 type StackProcessor interface {
@@ -37,6 +42,18 @@ func NewStackProcessor(source afero.Fs, includePaths []string, excludePaths []st
 		return sp.loadAndProcessStackFile(key.(string))
 	})
 	return sp
+}
+
+func NewStackProcessorFromConfig(conf *config.Configuration) (StackProcessor, error) {
+	stacksBasePath := path.Join(conf.BasePath, conf.Stacks.BasePath)
+	stacksBaseAbsPath, err := filepath.Abs(stacksBasePath)
+	if err != nil {
+		return nil, nil
+	}
+
+	stackFS := afero.NewBasePathFs(afero.NewOsFs(), stacksBaseAbsPath)
+
+	return NewStackProcessor(stackFS, conf.Stacks.IncludedPaths, conf.Stacks.ExcludedPaths), nil
 }
 
 type stackProcessor struct {
@@ -57,21 +74,25 @@ func (sp *stackProcessor) GetStackNames() ([]string, error) {
 }
 
 func (sp *stackProcessor) GetStack(name string) (*Stack, error) {
-	stk, err := sp.loadAndProcessStackFile(name)
+	stackConfig, err := sp.loadAndProcessStackFile(name)
 	if err != nil {
 		return nil, err
 	}
-	return &Stack{Name: stk.name}, nil
+	return ProcessStackConfig(stackConfig)
 }
 
 func (sp *stackProcessor) GetStacks(names []string) ([]*Stack, error) {
-	stks, err := sp.checkCacheOrLoadStackFiles(names)
+	stkConfigs, err := sp.checkCacheOrLoadStackFiles(names)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*Stack, len(stks))
-	for i, stk := range stks {
-		out[i] = &Stack{Name: stk.name}
+	out := make([]*Stack, len(stkConfigs))
+	for i, stk := range stkConfigs {
+		stk, err := ProcessStackConfig(stk)
+		if err != nil {
+			return nil, err
+		}
+		out[i] = stk
 	}
 	return out, err
 }
@@ -161,4 +182,43 @@ type stack struct {
 	name   string         `yaml:"_"`
 	Import []string       `yaml:"import,omitempty"`
 	Config map[string]any `yaml:",inline"`
+}
+
+func ProcessStackConfig(stk *stack) (*Stack, error) {
+	var stackConfig schema.StackConfig
+	err := mapstructure.Decode(stk.Config, &stackConfig)
+	if err != nil {
+		return nil, err
+	}
+	componentTypeMap, err := processComponentType(stackConfig, "helmfile")
+	if err != nil {
+		return nil, err
+	}
+	return &Stack{Name: stk.name, ComponentTypes: map[string]ComponentMap{
+		"helmfile": componentTypeMap,
+	}}, nil
+}
+
+func processComponentType(stackConfig schema.StackConfig, componentType string) (ComponentMap, error) {
+	componentTypeVars, err := merge.Merge([]map[string]any{stackConfig.Vars, stackConfig.ComponentTypeSettings[componentType].Vars})
+	if err != nil {
+		return ComponentMap{}, err
+	}
+	componentsMap := ComponentMap{Components: map[string]Component{}}
+	for k, v := range stackConfig.Components.Types[componentType] {
+		component, err := processComponentConfig(v, componentTypeVars)
+		if err != nil {
+			return ComponentMap{}, err
+		}
+		componentsMap.Components[k] = component
+	}
+	return componentsMap, nil
+}
+
+func processComponentConfig(conf schema.ComponentConfig, componentTypeVars map[string]any) (Component, error) {
+	componentVars, err := merge.Merge([]map[string]any{componentTypeVars, conf.Vars})
+	if err != nil {
+		return Component{}, err
+	}
+	return Component{Vars: componentVars}, nil
 }

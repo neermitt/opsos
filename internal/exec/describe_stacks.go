@@ -2,16 +2,13 @@ package exec
 
 import (
 	"fmt"
-	"github.com/neermitt/opsos/pkg/stack"
-	"github.com/neermitt/opsos/pkg/utils"
 	"io"
 	"os"
-	"path"
-	"path/filepath"
 
 	"github.com/neermitt/opsos/pkg/config"
 	"github.com/neermitt/opsos/pkg/formatters"
-	"github.com/spf13/afero"
+	"github.com/neermitt/opsos/pkg/stack"
+	"github.com/neermitt/opsos/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -21,7 +18,17 @@ type DescribeStackOptions struct {
 	Stack      string
 }
 
+type helmfileOutput struct {
+	Vars map[string]any
+	Envs map[string]string
+}
+
+type componentsOutput struct {
+	Helmfile map[string]helmfileOutput
+}
+
 type describeStackOutput struct {
+	Components componentsOutput
 }
 
 type describeStacksOutput struct {
@@ -30,17 +37,13 @@ type describeStacksOutput struct {
 
 // ExecuteDescribeStacks executes `describe stacks` command
 func ExecuteDescribeStacks(cmd *cobra.Command, options DescribeStackOptions) error {
-	conf := cmd.Context().Value("config").(*config.Configuration)
+	conf := config.GetConfig(cmd.Context())
 
-	stacksBasePath := path.Join(conf.BasePath, conf.Stacks.BasePath)
-	stacksBaseAbsPath, err := filepath.Abs(stacksBasePath)
+	stackProcessor, err := stack.NewStackProcessorFromConfig(conf)
 	if err != nil {
 		return err
 	}
 
-	stackFS := afero.NewBasePathFs(afero.NewOsFs(), stacksBaseAbsPath)
-
-	stackProcessor := stack.NewStackProcessor(stackFS, conf.Stacks.IncludedPaths, conf.Stacks.ExcludedPaths)
 	stackNames, err := stackProcessor.GetStackNames()
 	if err != nil {
 		return err
@@ -67,7 +70,15 @@ func ExecuteDescribeStacks(cmd *cobra.Command, options DescribeStackOptions) err
 	output := describeStacksOutput{Stacks: make(map[string]describeStackOutput)}
 
 	for _, stk := range stacks {
-		output.Stacks[stk.Name] = describeStackOutput{}
+		helmfileComponents := map[string]helmfileOutput{}
+		for k, v := range stk.ComponentTypes["helmfile"].Components {
+			helmfileComponents[k] = helmfileOutput{Vars: v.Vars, Envs: v.Envs}
+		}
+		output.Stacks[stk.Name] = describeStackOutput{
+			Components: componentsOutput{
+				Helmfile: helmfileComponents,
+			},
+		}
 	}
 
 	var w io.Writer = os.Stdout
