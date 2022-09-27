@@ -22,9 +22,8 @@ type Terraform struct {
 }
 
 type Helmfile struct {
-	BasePath           string `yaml:"base_path" json:"base_path" mapstructure:"base_path"`
-	KubeconfigPath     string `yaml:"kubeconfig_path" json:"kubeconfig_path" mapstructure:"kubeconfig_path"`
-	ClusterNamePattern string `yaml:"cluster_name_pattern" json:"cluster_name_pattern" mapstructure:"cluster_name_pattern"`
+	BasePath string `yaml:"base_path" json:"base_path" mapstructure:"base_path"`
+	Envs     map[string]string
 }
 
 type Stacks struct {

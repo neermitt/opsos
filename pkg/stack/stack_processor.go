@@ -1,6 +1,7 @@
 package stack
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"gopkg.in/yaml.v3"
@@ -8,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"text/template"
 
 	"github.com/goburrow/cache"
 	"github.com/mitchellh/mapstructure"
@@ -20,22 +22,24 @@ import (
 )
 
 type Stack struct {
+	Id             string
 	Name           string
 	ComponentTypes map[string]ComponentConfigMap
+	Vars           map[string]any
 }
 
-type ComponentConfigMap map[string]ComponentConfig
-
-type ComponentConfig map[string]any
+type ComponentConfigMap map[string]any
 
 type StackProcessor interface {
-	GetStackNames() ([]string, error)
-	GetStack(name string) (*Stack, error)
-	GetStacks(names []string) ([]*Stack, error)
+	GetStackNames(ctx context.Context) ([]string, error)
+	GetStack(ctx context.Context, name string) (*Stack, error)
+	GetStacks(ctx context.Context, names []string) ([]*Stack, error)
 }
 
-func NewStackProcessor(source afero.Fs, includePaths []string, excludePaths []string) StackProcessor {
-	sp := &stackProcessor{fs: source, fl: fs.NewMatcherFs(source, matcher(includePaths, excludePaths))}
+func NewStackProcessor(source afero.Fs, includePaths []string, excludePaths []string, stackNamePattern string) StackProcessor {
+	tmpl := template.Must(template.New("stackNamePattern").Parse(stackNamePattern))
+
+	sp := &stackProcessor{fs: source, fl: fs.NewMatcherFs(source, matcher(includePaths, excludePaths)), stackNameTemplate: tmpl}
 	sp.cache = cache.NewLoadingCache(func(key cache.Key) (cache.Value, error) {
 		return sp.loadAndProcessStackFile(key.(string))
 	})
@@ -51,16 +55,17 @@ func NewStackProcessorFromConfig(conf *config.Configuration) (StackProcessor, er
 
 	stackFS := afero.NewBasePathFs(afero.NewOsFs(), stacksBaseAbsPath)
 
-	return NewStackProcessor(stackFS, conf.Stacks.IncludedPaths, conf.Stacks.ExcludedPaths), nil
+	return NewStackProcessor(stackFS, conf.Stacks.IncludedPaths, conf.Stacks.ExcludedPaths, conf.Stacks.NamePattern), nil
 }
 
 type stackProcessor struct {
-	fs    afero.Fs
-	fl    afero.Fs
-	cache cache.LoadingCache
+	fs                afero.Fs
+	fl                afero.Fs
+	cache             cache.LoadingCache
+	stackNameTemplate *template.Template
 }
 
-func (sp *stackProcessor) GetStackNames() ([]string, error) {
+func (sp *stackProcessor) GetStackNames(ctx context.Context) ([]string, error) {
 	files, err := fs.AllFiles(sp.fl)
 	if err != nil {
 		return nil, err
@@ -71,22 +76,22 @@ func (sp *stackProcessor) GetStackNames() ([]string, error) {
 	return files, err
 }
 
-func (sp *stackProcessor) GetStack(name string) (*Stack, error) {
+func (sp *stackProcessor) GetStack(ctx context.Context, name string) (*Stack, error) {
 	stackConfig, err := sp.loadAndProcessStackFile(name)
 	if err != nil {
 		return nil, err
 	}
-	return ProcessStackConfig(stackConfig)
+	return sp.processStackConfig(ctx, stackConfig)
 }
 
-func (sp *stackProcessor) GetStacks(names []string) ([]*Stack, error) {
+func (sp *stackProcessor) GetStacks(ctx context.Context, names []string) ([]*Stack, error) {
 	stkConfigs, err := sp.checkCacheOrLoadStackFiles(names)
 	if err != nil {
 		return nil, err
 	}
 	out := make([]*Stack, len(stkConfigs))
-	for i, stk := range stkConfigs {
-		stk, err := ProcessStackConfig(stk)
+	for i, stkConfig := range stkConfigs {
+		stk, err := sp.processStackConfig(ctx, stkConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -182,9 +187,14 @@ type stack struct {
 	Config map[string]any `yaml:",inline"`
 }
 
-func ProcessStackConfig(stk *stack) (*Stack, error) {
+func (sp *stackProcessor) processStackConfig(ctx context.Context, stk *stack) (*Stack, error) {
 	var stackConfig schema.StackConfig
 	err := mapstructure.Decode(stk.Config, &stackConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	stackName, err := sp.getStackName(stackConfig.Vars)
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +204,7 @@ func ProcessStackConfig(stk *stack) (*Stack, error) {
 	componentTypes := make(map[string]ComponentConfigMap, len(providers))
 
 	for _, providerName := range providers {
-		componentTypeMap, err := processComponentType(stackConfig, providerName)
+		componentTypeMap, err := sp.processComponentType(ctx, stackConfig, providerName)
 		if err != nil {
 			return nil, err
 		}
@@ -202,12 +212,12 @@ func ProcessStackConfig(stk *stack) (*Stack, error) {
 
 	}
 
-	return &Stack{Name: stk.name, ComponentTypes: componentTypes}, nil
+	return &Stack{Id: stk.name, Name: stackName, ComponentTypes: componentTypes, Vars: stackConfig.Vars}, nil
 }
 
-func processComponentType(stackConfig schema.StackConfig, componentType string) (ComponentConfigMap, error) {
+func (sp *stackProcessor) processComponentType(ctx context.Context, stackConfig schema.StackConfig, componentType string) (ComponentConfigMap, error) {
 
-	provider, ok := plugins.GetProvider(componentType)
+	provider, ok := plugins.GetProvider(ctx, componentType)
 	if !ok {
 		return ComponentConfigMap{}, fmt.Errorf("provider plugin not found for componentType: %s", componentType)
 	}
@@ -216,11 +226,19 @@ func processComponentType(stackConfig schema.StackConfig, componentType string) 
 
 	componentsMap := ComponentConfigMap{}
 	for k, v := range stackConfig.Components.Types[componentType] {
-		componentExecConfig, err := provider.ProcessComponentConfig(providerStackContext, v)
+		componentExecConfig, err := provider.ProcessComponentConfig(providerStackContext, k, v)
 		if err != nil {
 			return ComponentConfigMap{}, err
 		}
 		componentsMap[k] = componentExecConfig
 	}
 	return componentsMap, nil
+}
+
+func (sp *stackProcessor) getStackName(vars map[string]any) (string, error) {
+	var buff bytes.Buffer
+	if err := sp.stackNameTemplate.Execute(&buff, vars); err != nil {
+		return "", err
+	}
+	return buff.String(), nil
 }

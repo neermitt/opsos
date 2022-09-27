@@ -1,15 +1,13 @@
 package stack
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"path"
-	"path/filepath"
 
 	"github.com/neermitt/opsos/pkg/config"
 	"github.com/neermitt/opsos/pkg/utils"
 	"github.com/neermitt/opsos/pkg/utils/fs"
-	"github.com/spf13/afero"
 )
 
 func matcher(includedPaths []string, excludedPaths []string) fs.Matcher {
@@ -31,17 +29,14 @@ type LoadStackOptions struct {
 	Stack string
 }
 
-func LoadStack(conf *config.Configuration, options LoadStackOptions) (*Stack, error) {
-	stacksBasePath := path.Join(conf.BasePath, conf.Stacks.BasePath)
-	stacksBaseAbsPath, err := filepath.Abs(stacksBasePath)
+func LoadStack(ctx context.Context, options LoadStackOptions) (*Stack, error) {
+	conf := config.GetConfig(ctx)
+	stackProcessor, err := NewStackProcessorFromConfig(conf)
 	if err != nil {
 		return nil, nil
 	}
 
-	stackFS := afero.NewBasePathFs(afero.NewOsFs(), stacksBaseAbsPath)
-
-	stackProcessor := NewStackProcessor(stackFS, conf.Stacks.IncludedPaths, conf.Stacks.ExcludedPaths)
-	stackNames, err := stackProcessor.GetStackNames()
+	stackNames, err := stackProcessor.GetStackNames(ctx)
 	if err != nil {
 		return nil, nil
 	}
@@ -53,5 +48,5 @@ func LoadStack(conf *config.Configuration, options LoadStackOptions) (*Stack, er
 	if !utils.StringInSlice(options.Stack, stackNames) {
 		return nil, fmt.Errorf("stack %s not found", options.Stack)
 	}
-	return stackProcessor.GetStack(options.Stack)
+	return stackProcessor.GetStack(ctx, options.Stack)
 }

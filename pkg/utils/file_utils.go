@@ -1,6 +1,11 @@
 package utils
 
-import "os"
+import (
+	"io"
+	"os"
+
+	"github.com/neermitt/opsos/pkg/formatters"
+)
 
 func FileExists(filename string) bool {
 	fileInfo, err := os.Stat(filename)
@@ -8,4 +13,19 @@ func FileExists(filename string) bool {
 		return false
 	}
 	return !fileInfo.IsDir()
+}
+
+// PrintOrWriteToFile converts the provided value to given format and writes it to the specified file
+func PrintOrWriteToFile(format string, filePath string, data any, fileMode os.FileMode) error {
+	var w io.Writer = os.Stdout
+	if filePath != "" {
+		f, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, fileMode)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		w = f
+	}
+
+	return formatters.Get(format)(w, data)
 }
