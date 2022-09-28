@@ -3,6 +3,8 @@ base_path: "examples/complete"
 components:
   helmfile:
     base_path: "components/helmfile"
+    kubeconfig_path: "/dev/shm"
+    cluster_name_pattern: "{{.namespace}}-{{.tenant}}-{{.environment}}-{{.stage}}"
 
 stacks:
   base_path: "stacks"

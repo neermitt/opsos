@@ -46,6 +46,7 @@ func InitConfig() (*Configuration, error) {
 	viper.SetDefault("components.helmfile.base_path", "")
 	viper.SetDefault("components.helmfile.kube_config_path", "")
 	viper.SetDefault("components.helmfile.cluster_name_pattern", "")
+	viper.SetDefault("components.helmfile.envs", nil)
 	viper.SetDefault("workflows.base_path", "")
 
 	// Process config in home dir

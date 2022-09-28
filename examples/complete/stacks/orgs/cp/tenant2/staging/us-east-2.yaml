@@ -11,6 +11,8 @@ import:
   - catalog/helmfile/infra-server
   - catalog/helmfile/infra-server-override
 
+kube_config_provider: kind
+
 components:
   terraform:
     "infra/vpc":

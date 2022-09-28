@@ -45,7 +45,6 @@ var helmfileApplyCmd = &cobra.Command{
 		additionalArgs := args[2:]
 
 		stk, err := stack.LoadStack(ctx, stack.LoadStackOptions{Stack: stackName})
-
 		if err != nil {
 			return err
 		}
@@ -61,6 +60,21 @@ var helmfileApplyCmd = &cobra.Command{
 
 		info := hc.(helmfileComponentInfo)
 
+		conf := config.GetConfig(ctx)
+		kubeconfigPath := fmt.Sprintf("%s/%s-kubecfg", conf.Components.Helmfile.KubeconfigPath, stk.Name)
+		clusterName, err := processTemplate(conf.Components.Helmfile.ClusterNamePattern, stk.Vars)
+		if err != nil {
+			return err
+		}
+		kubeConfigProvider, found := plugins.GetKubeConfigProvider(ctx, stk.KubeConfigProvider)
+		if !found {
+			return fmt.Errorf("%s kube config provider is not configured", stk.KubeConfigProvider)
+		}
+		err = kubeConfigProvider.ExportKubeConfig(cmd.Context(), clusterName, kubeconfigPath)
+		if err != nil {
+			return err
+		}
+
 		varFile := constructHelmfileComponentVarfileName(stk, info)
 		varFilePath := constructHelmfileComponentVarfilePath(stk, info)
 
@@ -75,14 +89,16 @@ var helmfileApplyCmd = &cobra.Command{
 		}
 
 		// Prepare arguments and flags
-		commandArgs := []string{"--state-values-file", varFile, "apply"}
+		commandArgs := []string{"--state-values-file", varFile}
+
+		commandArgs = append(commandArgs, "apply")
 
 		commandArgs = append(commandArgs, additionalArgs...)
 
 		cmdEnv := append([]string{},
 			fmt.Sprintf("STACK=%s", stk.Name),
+			fmt.Sprintf("KUBECONFIG=%s", kubeconfigPath),
 		)
-		conf := config.GetConfig(ctx)
 		for k, v := range conf.Components.Helmfile.Envs {
 			pv, err := processTemplate(v, stk.Vars)
 			if err != nil {
@@ -90,7 +106,11 @@ var helmfileApplyCmd = &cobra.Command{
 			}
 			cmdEnv = append(cmdEnv, fmt.Sprintf("%s=%s", k, pv))
 		}
-		return utils.ExecuteShellCommand(ctx, "helmfile", commandArgs, info.WorkingDir, cmdEnv, applyOptions.DryRun)
+		return utils.ExecuteShellCommand(ctx, "helmfile", commandArgs, utils.ExecOptions{
+			DryRun:           applyOptions.DryRun,
+			Env:              cmdEnv,
+			WorkingDirectory: info.WorkingDir,
+		})
 	},
 }
 

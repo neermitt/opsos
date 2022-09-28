@@ -22,10 +22,11 @@ import (
 )
 
 type Stack struct {
-	Id             string
-	Name           string
-	ComponentTypes map[string]ComponentConfigMap
-	Vars           map[string]any
+	Id                 string
+	Name               string
+	ComponentTypes     map[string]ComponentConfigMap
+	Vars               map[string]any
+	KubeConfigProvider string
 }
 
 type ComponentConfigMap map[string]any
@@ -65,7 +66,7 @@ type stackProcessor struct {
 	stackNameTemplate *template.Template
 }
 
-func (sp *stackProcessor) GetStackNames(ctx context.Context) ([]string, error) {
+func (sp *stackProcessor) GetStackNames(_ context.Context) ([]string, error) {
 	files, err := fs.AllFiles(sp.fl)
 	if err != nil {
 		return nil, err
@@ -212,7 +213,7 @@ func (sp *stackProcessor) processStackConfig(ctx context.Context, stk *stack) (*
 
 	}
 
-	return &Stack{Id: stk.name, Name: stackName, ComponentTypes: componentTypes, Vars: stackConfig.Vars}, nil
+	return &Stack{Id: stk.name, Name: stackName, ComponentTypes: componentTypes, Vars: stackConfig.Vars, KubeConfigProvider: stackConfig.KubeConfigProvider}, nil
 }
 
 func (sp *stackProcessor) processComponentType(ctx context.Context, stackConfig schema.StackConfig, componentType string) (ComponentConfigMap, error) {

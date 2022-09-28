@@ -3,21 +3,33 @@ package utils
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 )
 
-func ExecuteShellCommand(ctx context.Context, command string, args []string, workingDir string, env []string, dryRun bool) error {
+type ExecOptions struct {
+	DryRun           bool
+	Env              []string
+	WorkingDirectory string
+	StdOut           io.Writer
+}
+
+func ExecuteShellCommand(ctx context.Context, command string, args []string, options ExecOptions) error {
 	cmd := exec.CommandContext(ctx, command, args...)
-	cmd.Env = append(os.Environ(), env...)
-	cmd.Dir = workingDir
+	cmd.Env = append(os.Environ(), options.Env...)
+	cmd.Dir = options.WorkingDirectory
 	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
+	if options.StdOut != nil {
+		cmd.Stdout = options.StdOut
+	} else {
+		cmd.Stdout = os.Stdout
+	}
 	cmd.Stderr = os.Stderr
 
 	fmt.Println(cmd.String())
 
-	if dryRun {
+	if options.DryRun {
 		return nil
 	}
 
