@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/neermitt/opsos/pkg/config"
 	"github.com/neermitt/opsos/pkg/merge"
@@ -68,7 +69,7 @@ func (h *helmfileProvider) ProcessComponentConfig(ctx context.Context, component
 		info.Component = component
 	} else {
 		info.Component = file
-		info.ComponentFolderPrefix = dir
+		info.ComponentFolderPrefix = strings.TrimSuffix(dir, "/")
 	}
 
 	info.WorkingDir = path.Join(h.basePath, component)

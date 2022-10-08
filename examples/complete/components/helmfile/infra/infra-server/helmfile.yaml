@@ -92,19 +92,28 @@ releases:
                     # https://github.com/kubernetes-sigs/aws-load-balancer-controller/issues/1702#issuecomment-736890777
                     {{- if eq (printf "%v" .Values.alb_ssl_redirect_enabled) "true" }}
                     - path: /*
+                      pathType: Prefix
                       backend:
-                        serviceName: ssl-redirect
-                        servicePort: use-annotation
+                        service:
+                          name: ssl-redirect
+                          port:
+                            name: use-annotation
                       {{- end }}
                     - path: /*
+                      pathType: Prefix
                       backend:
-                        serviceName: {{ .Values.server_name }}
-                        servicePort: http
+                        service:
+                          name: {{ .Values.server_name }}
+                          port:
+                            name: http
                     {{- else }}
                     - path: /
+                      pathType: Prefix
                       backend:
-                        serviceName: {{ .Values.server_name }}
-                        servicePort: http
+                        service:
+                          name: {{ .Values.server_name }}
+                          port:
+                            name: http
                     {{- end }}
               {{- if eq (printf "%v" .Values.tls_enabled) "true" }}
               tls: # < placing a host in the TLS config will indicate a certificate should be created

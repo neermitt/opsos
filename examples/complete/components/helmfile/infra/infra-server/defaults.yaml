@@ -2,7 +2,7 @@ installed: false
 
 server_name: echo-server
 
-ingress_api: networking.k8s.io/v1beta1
+ingress_api: networking.k8s.io/v1
 
 # Hostname will be set by:
 #   printf .Values.hostname_template .Values.stage .Values.environment
