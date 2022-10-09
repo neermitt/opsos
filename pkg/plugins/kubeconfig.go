@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/neermitt/opsos/pkg/config"
 )
@@ -28,4 +29,12 @@ func GetKubeConfigProvider(ctx context.Context, name string) (KubeConfigProvider
 		return nil, ok
 	}
 	return pf(config.GetConfig(ctx)), ok
+}
+
+func GetKubeConfig(ctx context.Context, provider string, clusterName string, kubeconfigPath string) error {
+	kubeConfigProvider, found := GetKubeConfigProvider(ctx, provider)
+	if !found {
+		return fmt.Errorf("%s kube config provider is not configured", provider)
+	}
+	return kubeConfigProvider.ExportKubeConfig(ctx, clusterName, kubeconfigPath)
 }
