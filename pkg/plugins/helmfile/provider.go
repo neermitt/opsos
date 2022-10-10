@@ -21,7 +21,7 @@ const (
 	varsField = "vars"
 )
 
-type helmfileComponentInfo struct {
+type ComponentInfo struct {
 	Component             string `yaml:"-" json:"-"`
 	ComponentFolderPrefix string `yaml:"-" json:"-"`
 
@@ -30,17 +30,29 @@ type helmfileComponentInfo struct {
 	WorkingDir     string         `yaml:"-" json:"-"`
 }
 
-type helmfileProvider struct {
+func NewProvider(conf *config.Configuration) *HelmfileProvider {
+	helmfileBasePath := path.Join(conf.BasePath, conf.Components.Helmfile.BasePath)
+	helmfileBaseAbsPath, err := filepath.Abs(helmfileBasePath)
+	if err != nil {
+		return nil
+	}
+
+	stackFS := afero.NewBasePathFs(afero.NewOsFs(), helmfileBaseAbsPath)
+
+	return &HelmfileProvider{fs: stackFS, basePath: helmfileBaseAbsPath}
+}
+
+type HelmfileProvider struct {
 	fs       afero.Fs
 	basePath string
 }
 
-func (h *helmfileProvider) InitStackContext(ctx context.Context, config schema.StackConfig) context.Context {
+func (h *HelmfileProvider) InitStackContext(ctx context.Context, config schema.StackConfig) context.Context {
 	componentTypeVars, _ := merge.Merge([]map[string]any{config.Vars, config.ComponentTypeSettings[providerName].Vars})
 	return context.WithValue(ctx, stackConfig, map[string]any{"vars": componentTypeVars})
 }
 
-func (h *helmfileProvider) ProcessComponentConfig(ctx context.Context, componentName string, componentConfig schema.ComponentConfig) (any, error) {
+func (h *HelmfileProvider) ProcessComponentConfig(ctx context.Context, componentName string, componentConfig schema.ComponentConfig) (any, error) {
 	baseConfig := ctx.Value(stackConfig).(map[string]any)
 	baseVars := baseConfig[varsField].(map[string]any)
 	componentVars, err := merge.Merge([]map[string]any{baseVars, componentConfig.Vars})
@@ -48,7 +60,7 @@ func (h *helmfileProvider) ProcessComponentConfig(ctx context.Context, component
 		return nil, err
 	}
 
-	info := helmfileComponentInfo{Vars: componentVars}
+	info := ComponentInfo{Vars: componentVars}
 
 	component := componentName
 
@@ -79,14 +91,6 @@ func (h *helmfileProvider) ProcessComponentConfig(ctx context.Context, component
 
 func init() {
 	plugins.RegisterProvider(providerName, func(conf *config.Configuration) plugins.Provider {
-		helmfileBasePath := path.Join(conf.BasePath, conf.Components.Helmfile.BasePath)
-		helmfileBaseAbsPath, err := filepath.Abs(helmfileBasePath)
-		if err != nil {
-			return nil
-		}
-
-		stackFS := afero.NewBasePathFs(afero.NewOsFs(), helmfileBaseAbsPath)
-
-		return &helmfileProvider{fs: stackFS, basePath: helmfileBaseAbsPath}
+		return NewProvider(conf)
 	})
 }
