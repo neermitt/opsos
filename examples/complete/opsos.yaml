@@ -5,6 +5,12 @@ components:
     base_path: "components/helmfile"
     kubeconfig_path: "/dev/shm"
     cluster_name_pattern: "{{.namespace}}-{{.tenant}}-{{.environment}}-{{.stage}}"
+  terraform:
+    base_path: "components/terraform"
+    apply_auto_approve: false
+    deploy_run_init: true
+    init_run_reconfigure: true
+    auto_generate_backend_file: false
 
 stacks:
   base_path: "stacks"
