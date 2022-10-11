@@ -105,6 +105,114 @@ func TestProcessComponentConfigs(t *testing.T) {
 				Component: "infra/vpc",
 			},
 		},
+		"test/test-component": {
+			Config: Config{
+				Vars: map[string]any{
+					"enabled": true,
+				},
+				Envs: map[string]string{
+					"TEST_ENV_VAR1": "val1",
+					"TEST_ENV_VAR2": "val2",
+					"TEST_ENV_VAR3": "val3",
+				},
+				Settings: map[string]any{
+					"spacelift": map[string]any{
+						"workspace_enabled": true,
+					},
+				},
+			},
+			Metadata: Metadata{
+				Type: "real",
+			},
+		},
+		"test/test-component-override": {
+			Config: Config{
+				Component: "test/test-component",
+				Vars:      map[string]any{},
+				Envs: map[string]string{
+					"TEST_ENV_VAR1": "val1-override",
+					"TEST_ENV_VAR3": "val3-override",
+					"TEST_ENV_VAR4": "val4",
+				},
+				RemoteStateBackendType: "static",
+				RemoteStateBackendConfigs: map[string]any{
+					"static": map[string]any{
+						"val1": true,
+						"val2": "2",
+						"val3": 3,
+						"val4": nil,
+					},
+				},
+				Settings: map[string]any{
+					"spacelift": map[string]any{
+						"workspace_enabled": true,
+					},
+				},
+			},
+			Metadata: Metadata{
+				TerraformWorkspace: "test-component-override-workspace-override",
+			},
+		},
+		"test/test-component-override-2": {
+			Config: Config{
+				Component: "test/test-component-override",
+				Vars:      map[string]any{},
+				Envs: map[string]string{
+					"TEST_ENV_VAR1": "val1-override-2",
+					"TEST_ENV_VAR2": "val2-override-2",
+					"TEST_ENV_VAR4": "val4-override-2",
+				},
+				RemoteStateBackendType: "static",
+				RemoteStateBackendConfigs: map[string]any{
+					"static": map[string]any{
+						"val1": true,
+						"val2": "5",
+						"val3": 7,
+						"val4": nil,
+					},
+				},
+				Settings: map[string]any{
+					"spacelift": map[string]any{
+						"workspace_enabled":  true,
+						"stack_name_pattern": "{{.tenant}}-{{.environment}}-{{.stage}}-new-component",
+					},
+				},
+			},
+			Metadata: Metadata{
+				TerraformWorkspacePattern: "{{.tenant}}-{{.environment}}-{{.stage}}-{{.component}}",
+			},
+		},
+		"mixin/test-1": {
+			Config: Config{
+				Vars: map[string]any{
+					"service_1_name": "mixin-1",
+				},
+			},
+			Metadata: Metadata{
+				Type: "abstract",
+			},
+		},
+		"mixin/test-2": {
+			Config: Config{
+				Vars: map[string]any{
+					"service_1_name": "mixin-2",
+				},
+			},
+			Metadata: Metadata{
+				Type: "abstract",
+			},
+		},
+		"metadata/inherit-1": {
+			Metadata: Metadata{
+				Component: "test/test-component",
+				Inherits: []string{
+					"test/test-component-override",
+					"test/test-component-override-2",
+					"mixin/test-1",
+					"mixin/test-2",
+				},
+			},
+		},
 	}
 
 	tests := []struct {
@@ -433,6 +541,91 @@ func TestProcessComponentConfigs(t *testing.T) {
 				},
 				Metadata: Metadata{
 					Component: "infra/vpc",
+				},
+			},
+		},
+		{
+			componentName: "metadata/inherit-1",
+			expectedComponentInfo: &ConfigWithMetadata{
+				Config: Config{
+					Component: "test/test-component",
+					Vars: map[string]any{
+						"enabled":        true,
+						"key1":           "val1",
+						"key2":           "val2",
+						"service_1_name": "mixin-2",
+					},
+					Envs: map[string]string{
+						"TEST_ENV_VAR1": "val1-override-2",
+						"TEST_ENV_VAR2": "val2-override-2",
+						"TEST_ENV_VAR3": "val3-override",
+						"TEST_ENV_VAR4": "val4-override-2",
+						"env1":          "val1",
+						"env2":          "val2",
+					},
+					BackendType: "s3",
+					BackendConfigs: map[string]any{
+						"s3": map[string]any{
+							"encrypt":        true,
+							"bucket":         "cp-ue2-root-tfstate",
+							"key":            "terraform.tfstate",
+							"dynamodb_table": "cp-ue2-root-tfstate-lock",
+							"acl":            "bucket-owner-full-control",
+							"region":         "us-east-2",
+							"role_arn":       nil,
+						},
+						"azurerm": map[string]any{
+							"subscription_id":      "88888-8888-8888-8888-8888888888",
+							"resource_group_name":  "rg-terraform-state",
+							"storage_account_name": "staterraformstate",
+							"container_name":       "dev-tfstate",
+							"key":                  "dev.atmos",
+						},
+						"remote": nil,
+						"vault":  nil,
+					},
+					RemoteStateBackendType: "static",
+					RemoteStateBackendConfigs: map[string]any{
+						"s3": map[string]any{
+							"encrypt":        true,
+							"bucket":         "cp-ue2-root-tfstate",
+							"key":            "terraform.tfstate",
+							"dynamodb_table": "cp-ue2-root-tfstate-lock",
+							"acl":            "bucket-owner-full-control",
+							"region":         "us-east-2",
+							"role_arn":       "arn:aws:iam::123456789012:role/cp-gbl-root-terraform",
+						},
+						"azurerm": map[string]any{
+							"subscription_id":      "88888-8888-8888-8888-8888888888",
+							"resource_group_name":  "rg-terraform-state",
+							"storage_account_name": "staterraformstate",
+							"container_name":       "dev-tfstate",
+							"key":                  "dev.atmos",
+						},
+						"remote": nil,
+						"vault":  nil,
+						"static": map[string]any{
+							"val1": true,
+							"val2": "5",
+							"val3": 7,
+							"val4": nil,
+						},
+					},
+					Settings: map[string]any{
+						"spacelift": map[string]any{
+							"workspace_enabled":  true,
+							"stack_name_pattern": "{{.tenant}}-{{.environment}}-{{.stage}}-new-component",
+						},
+					},
+				},
+				Metadata: Metadata{
+					Component: "test/test-component",
+					Inherits: []string{
+						"test/test-component-override",
+						"test/test-component-override-2",
+						"mixin/test-1",
+						"mixin/test-2",
+					},
 				},
 			},
 		},

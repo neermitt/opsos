@@ -25,9 +25,11 @@ type ConfigWithMetadata struct {
 }
 
 type Metadata struct {
-	Type      string
-	Component string
-	Inherits  []string
+	Type                      string
+	Component                 string
+	Inherits                  []string
+	TerraformWorkspace        string
+	TerraformWorkspacePattern string
 }
 
 func processComponentConfigs(stackName string, baseConfig Config, componentsConfigMap map[string]ConfigWithMetadata, componentName string) (*ConfigWithMetadata, error) {
@@ -75,18 +77,28 @@ func loadComponentConfig(stackName string, componentsConfigMap map[string]Config
 	}
 
 	// check inheritance
-	if componentConfig.Component != "" {
-		baseComponentConfig, err := loadComponentConfig(stackName, componentsConfigMap, componentConfig.Component)
-		if err != nil {
-			return ConfigWithMetadata{}, fmt.Errorf("missing component %[3]s in stack %[1]s while inheriting from %[2]s", stackName, componentName, componentConfig.Component)
+	hierarchy, err := loadInheritanceTree(stackName, componentsConfigMap, componentName, true)
+	if err != nil {
+		return ConfigWithMetadata{}, err
+	}
+
+	hierarchy = unique(hierarchy)
+
+	if len(hierarchy) != 0 {
+		baseComponentConfigs := make([]ConfigWithMetadata, 0, len(hierarchy))
+		for _, baseComponent := range hierarchy {
+			if v, found := componentsConfigMap[baseComponent]; !found {
+				return ConfigWithMetadata{}, fmt.Errorf("missing component %[2]s in stack %[1]s", stackName, baseComponent)
+			} else {
+				baseComponentConfigs = append(baseComponentConfigs, v)
+			}
 		}
 
-		mc, err := mergeConfigs(baseComponentConfig.Config, componentConfig.Config)
+		baseComponentsConfig, err := mergeConfigList(baseComponentConfigs)
 		if err != nil {
-			return ConfigWithMetadata{}, errors.Wrap(err, fmt.Sprintf("failed to merge config for %[3]s and %[2]s in stack %[1]s", stackName, componentName, componentConfig.Component))
+			return ConfigWithMetadata{}, err
 		}
-		mc.Component = baseComponentConfig.Component
-		componentConfig = ConfigWithMetadata{Config: mc, Metadata: componentConfig.Metadata}
+		componentConfig = ConfigWithMetadata{Config: baseComponentsConfig, Metadata: componentConfig.Metadata}
 	}
 
 	// Update Component
@@ -94,6 +106,52 @@ func loadComponentConfig(stackName string, componentsConfigMap map[string]Config
 		componentConfig.Component = componentName
 	}
 	return componentConfig, nil
+}
+
+func loadInheritanceTree(stackName string, componentsConfigMap map[string]ConfigWithMetadata, componentName string, processInheritance bool) ([]string, error) {
+	var componentConfig ConfigWithMetadata
+	if v, found := componentsConfigMap[componentName]; !found {
+		return nil, fmt.Errorf("missing component %[2]s in stack %[1]s", stackName, componentName)
+	} else {
+		componentConfig = v
+	}
+	componentHierarchy := make([]string, 0, 10)
+
+	if componentConfig.Component != "" {
+		baseComponentHierarchy, err := loadInheritanceTree(stackName, componentsConfigMap, componentConfig.Component, false)
+		if err != nil {
+			return nil, err
+		}
+		componentHierarchy = append(componentHierarchy, baseComponentHierarchy...)
+	}
+
+	if processInheritance {
+		for _, baseComponent := range componentConfig.Metadata.Inherits {
+			baseComponentHierarchy, err := loadInheritanceTree(stackName, componentsConfigMap, baseComponent, false)
+			if err != nil {
+				return nil, err
+			}
+			componentHierarchy = append(componentHierarchy, baseComponentHierarchy...)
+		}
+	}
+
+	componentHierarchy = append(componentHierarchy, componentName)
+
+	return componentHierarchy, nil
+}
+
+func mergeConfigList(configs []ConfigWithMetadata) (Config, error) {
+	baseConfig := configs[0]
+
+	for _, config := range configs[1:] {
+		merged, err := mergeConfigs(baseConfig.Config, config.Config)
+		if err != nil {
+			return Config{}, err
+		}
+		baseConfig = ConfigWithMetadata{Config: merged}
+	}
+
+	return baseConfig.Config, nil
 }
 
 func mergeConfigs(config1 Config, config2 Config) (Config, error) {
@@ -110,6 +168,9 @@ func mergeConfigs(config1 Config, config2 Config) (Config, error) {
 		return Config{}, err
 	}
 
+	if config1.Component != "" {
+		mc["component"] = config1.Component
+	}
 	if config2.BackendType == "" {
 		mc["backend_type"] = config1.BackendType
 	}
@@ -145,4 +206,16 @@ func fromMap(config map[string]any) (Config, error) {
 	}
 
 	return dataCurrent, nil
+}
+
+func unique(intSlice []string) []string {
+	keys := make(map[string]bool)
+	list := []string{}
+	for _, entry := range intSlice {
+		if _, value := keys[entry]; !value {
+			keys[entry] = true
+			list = append(list, entry)
+		}
+	}
+	return list
 }
