@@ -100,6 +100,11 @@ func TestProcessComponentConfigs(t *testing.T) {
 				},
 			},
 		},
+		"metadata/component": {
+			Metadata: Metadata{
+				Component: "infra/vpc",
+			},
+		},
 	}
 
 	tests := []struct {
@@ -366,6 +371,68 @@ func TestProcessComponentConfigs(t *testing.T) {
 							"workspace_enabled": true,
 						},
 					},
+				},
+			},
+		},
+		{
+			componentName: "metadata/component",
+			expectedComponentInfo: &ConfigWithMetadata{
+				Config: Config{
+					Component: "infra/vpc",
+					Vars: map[string]any{
+						"key1": "val1",
+						"key2": "val2",
+					},
+					Envs: map[string]string{
+						"env1": "val1",
+						"env2": "val2",
+					},
+					BackendType: "s3",
+					BackendConfigs: map[string]any{
+						"s3": map[string]any{
+							"encrypt":        true,
+							"bucket":         "cp-ue2-root-tfstate",
+							"key":            "terraform.tfstate",
+							"dynamodb_table": "cp-ue2-root-tfstate-lock",
+							"acl":            "bucket-owner-full-control",
+							"region":         "us-east-2",
+							"role_arn":       nil,
+						},
+						"azurerm": map[string]any{
+							"subscription_id":      "88888-8888-8888-8888-8888888888",
+							"resource_group_name":  "rg-terraform-state",
+							"storage_account_name": "staterraformstate",
+							"container_name":       "dev-tfstate",
+							"key":                  "dev.atmos",
+						},
+						"remote": nil,
+						"vault":  nil,
+					},
+					RemoteStateBackendType: "s3",
+					RemoteStateBackendConfigs: map[string]any{
+						"s3": map[string]any{
+							"encrypt":        true,
+							"bucket":         "cp-ue2-root-tfstate",
+							"key":            "terraform.tfstate",
+							"dynamodb_table": "cp-ue2-root-tfstate-lock",
+							"acl":            "bucket-owner-full-control",
+							"region":         "us-east-2",
+							"role_arn":       "arn:aws:iam::123456789012:role/cp-gbl-root-terraform",
+						},
+						"azurerm": map[string]any{
+							"subscription_id":      "88888-8888-8888-8888-8888888888",
+							"resource_group_name":  "rg-terraform-state",
+							"storage_account_name": "staterraformstate",
+							"container_name":       "dev-tfstate",
+							"key":                  "dev.atmos",
+						},
+						"remote": nil,
+						"vault":  nil,
+					},
+					Settings: map[string]any{},
+				},
+				Metadata: Metadata{
+					Component: "infra/vpc",
 				},
 			},
 		},

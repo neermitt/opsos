@@ -43,6 +43,11 @@ func processComponentConfigs(stackName string, baseConfig Config, componentsConf
 	}
 	componentConfig = ConfigWithMetadata{Config: mc, Metadata: componentConfig.Metadata}
 
+	// process Metadata Component Override
+	if componentConfig.Metadata.Component != "" {
+		componentConfig.Component = componentConfig.Metadata.Component
+	}
+
 	// process remoteBackend
 	if componentConfig.RemoteStateBackendType == "" {
 		componentConfig.RemoteStateBackendType = componentConfig.BackendType
