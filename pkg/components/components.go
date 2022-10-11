@@ -9,27 +9,27 @@ import (
 )
 
 type Config struct {
-	Component                 string `yaml:"component,omitempty"`
-	Vars                      map[string]any
-	Envs                      map[string]string
-	BackendType               string `yaml:"backend_type,omitempty"`
-	BackendConfigs            map[string]any
-	RemoteStateBackendType    string `yaml:"remote_state_backend_type,omitempty"`
-	RemoteStateBackendConfigs map[string]any
-	Settings                  map[string]any
+	Component                 *string           `yaml:"component,omitempty" json:"component,omitempty"`
+	Vars                      map[string]any    `yaml:"vars,omitempty" json:"vars,omitempty"`
+	Envs                      map[string]string `yaml:"envs,omitempty" json:"envs,omitempty"`
+	BackendType               *string           `yaml:"backend_type,omitempty" json:"backend_type,omitempty"`
+	BackendConfigs            map[string]any    `yaml:"backend,omitempty" json:"backend,omitempty"`
+	RemoteStateBackendType    *string           `yaml:"remote_state_backend_type,omitempty" json:"remote_state_backend_type,omitempty"`
+	RemoteStateBackendConfigs map[string]any    `yaml:"remote_state_backend,omitempty" json:"remote_state_backend,omitempty"`
+	Settings                  map[string]any    `yaml:"settings,omitempty" json:"settings,omitempty"`
 }
 
 type ConfigWithMetadata struct {
-	Config   `yaml:",inline"`
-	Metadata Metadata
+	Config   `yaml:",inline" json:",inline"`
+	Metadata *Metadata `yaml:"metadata,omitempty" json:"metadata,omitempty"`
 }
 
 type Metadata struct {
-	Type                      string
-	Component                 string
-	Inherits                  []string
-	TerraformWorkspace        string
-	TerraformWorkspacePattern string
+	Type                      *string  `yaml:"type,omitempty" json:"type,omitempty"`
+	Component                 *string  `yaml:"component,omitempty" json:"component,omitempty"`
+	Inherits                  []string `yaml:"inherits,omitempty" json:"inherits,omitempty"`
+	TerraformWorkspace        *string  `yaml:"terraform_workspace,omitempty" json:"terraform_workspace,omitempty"`
+	TerraformWorkspacePattern *string  `yaml:"terraform_workspace_pattern,omitempty" json:"terraform_workspace_pattern,omitempty"`
 }
 
 func processComponentConfigs(stackName string, baseConfig Config, componentsConfigMap map[string]ConfigWithMetadata, componentName string) (*ConfigWithMetadata, error) {
@@ -46,12 +46,12 @@ func processComponentConfigs(stackName string, baseConfig Config, componentsConf
 	componentConfig = ConfigWithMetadata{Config: mc, Metadata: componentConfig.Metadata}
 
 	// process Metadata Component Override
-	if componentConfig.Metadata.Component != "" {
+	if componentConfig.Metadata != nil && componentConfig.Metadata.Component != nil {
 		componentConfig.Component = componentConfig.Metadata.Component
 	}
 
 	// process remoteBackend
-	if componentConfig.RemoteStateBackendType == "" {
+	if componentConfig.RemoteStateBackendType == nil {
 		componentConfig.RemoteStateBackendType = componentConfig.BackendType
 	}
 
@@ -102,8 +102,8 @@ func loadComponentConfig(stackName string, componentsConfigMap map[string]Config
 	}
 
 	// Update Component
-	if componentConfig.Component == "" {
-		componentConfig.Component = componentName
+	if componentConfig.Component == nil {
+		componentConfig.Component = &componentName
 	}
 	return componentConfig, nil
 }
@@ -117,15 +117,15 @@ func loadInheritanceTree(stackName string, componentsConfigMap map[string]Config
 	}
 	componentHierarchy := make([]string, 0, 10)
 
-	if componentConfig.Component != "" {
-		baseComponentHierarchy, err := loadInheritanceTree(stackName, componentsConfigMap, componentConfig.Component, false)
+	if componentConfig.Component != nil {
+		baseComponentHierarchy, err := loadInheritanceTree(stackName, componentsConfigMap, *componentConfig.Component, false)
 		if err != nil {
 			return nil, err
 		}
 		componentHierarchy = append(componentHierarchy, baseComponentHierarchy...)
 	}
 
-	if processInheritance {
+	if processInheritance && componentConfig.Metadata != nil {
 		for _, baseComponent := range componentConfig.Metadata.Inherits {
 			baseComponentHierarchy, err := loadInheritanceTree(stackName, componentsConfigMap, baseComponent, false)
 			if err != nil {
@@ -168,14 +168,8 @@ func mergeConfigs(config1 Config, config2 Config) (Config, error) {
 		return Config{}, err
 	}
 
-	if config1.Component != "" {
+	if config1.Component != nil {
 		mc["component"] = config1.Component
-	}
-	if config2.BackendType == "" {
-		mc["backend_type"] = config1.BackendType
-	}
-	if config2.RemoteStateBackendType == "" {
-		mc["remote_state_backend_type"] = config1.RemoteStateBackendType
 	}
 
 	return fromMap(mc)

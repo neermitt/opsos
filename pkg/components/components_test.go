@@ -8,6 +8,11 @@ import (
 
 func TestProcessComponentConfigs(t *testing.T) {
 
+	backendTypeS3 := "s3"
+	backendTypeRemote := "remote"
+	backendTypeAzurerm := "azurerm"
+	backendTypeStatic := "static"
+
 	baseConfig := Config{
 		Vars: map[string]any{
 			"key1": "val1",
@@ -17,9 +22,9 @@ func TestProcessComponentConfigs(t *testing.T) {
 			"env1": "val1",
 			"env2": "val2",
 		},
-		BackendType: "s3",
+		BackendType: &backendTypeS3,
 		BackendConfigs: map[string]any{
-			"s3": map[string]any{
+			backendTypeS3: map[string]any{
 				"encrypt":        true,
 				"bucket":         "cp-ue2-root-tfstate",
 				"key":            "terraform.tfstate",
@@ -28,26 +33,38 @@ func TestProcessComponentConfigs(t *testing.T) {
 				"region":         "us-east-2",
 				"role_arn":       nil,
 			},
-			"azurerm": map[string]any{
+			backendTypeAzurerm: map[string]any{
 				"subscription_id":      "88888-8888-8888-8888-8888888888",
 				"resource_group_name":  "rg-terraform-state",
 				"storage_account_name": "staterraformstate",
 				"container_name":       "dev-tfstate",
 				"key":                  "dev.atmos",
 			},
-			"remote": nil,
-			"vault":  nil,
+			backendTypeRemote: nil,
+			"vault":           nil,
 		},
 		RemoteStateBackendConfigs: map[string]any{
-			"s3": map[string]any{
+			backendTypeS3: map[string]any{
 				"role_arn": "arn:aws:iam::123456789012:role/cp-gbl-root-terraform",
 			},
 		},
 	}
 
+	componentInfraVPC := "infra/vpc"
+	componentTestComponent := "test/test-component"
+	componentOverrides := "ComponentOverrides"
+	componentOverrideComponent1 := "OverrideComponent1"
+	componentTestComponentOverride := "test/test-component-override"
+	componentNoOverride := "NoComponentOverride"
+
+	componentMetadataTypeReal := "real"
+	componentMetadataTypeAbstract := "abstract"
+	terraformWorkspaceOverride := "test-component-override-workspace-override"
+	terraformWorkspacePattern := "{{.tenant}}-{{.environment}}-{{.stage}}-{{.component}}"
+
 	componentsConfigMap := map[string]ConfigWithMetadata{
-		"NoComponentOverride": {},
-		"ComponentOverrides": {
+		componentNoOverride: {},
+		componentOverrides: {
 			Config: Config{
 				Vars: map[string]any{
 					"key2": "val-override-2",
@@ -57,15 +74,15 @@ func TestProcessComponentConfigs(t *testing.T) {
 					"env1": "val-override-1",
 					"env3": "val3",
 				},
-				BackendType: "remote",
+				BackendType: &backendTypeRemote,
 				BackendConfigs: map[string]any{
-					"s3": map[string]any{
+					backendTypeS3: map[string]any{
 						"bucket": "cp-ue2-root-tfstate-override",
 					},
 				},
-				RemoteStateBackendType: "azurerm",
+				RemoteStateBackendType: &backendTypeAzurerm,
 				RemoteStateBackendConfigs: map[string]any{
-					"azurerm": map[string]any{
+					backendTypeAzurerm: map[string]any{
 						"subscription_id": "99999-9999-9999-9999-9999999999",
 					},
 				},
@@ -76,9 +93,9 @@ func TestProcessComponentConfigs(t *testing.T) {
 				},
 			},
 		},
-		"OverrideComponent1": {
+		componentOverrideComponent1: {
 			Config: Config{
-				Component: "ComponentOverrides",
+				Component: &componentOverrides,
 				Vars: map[string]any{
 					"key3": "val-override-3",
 					"key4": "val-4",
@@ -86,12 +103,12 @@ func TestProcessComponentConfigs(t *testing.T) {
 				Envs: map[string]string{
 					"env4": "val-4",
 				},
-				BackendType: "s3",
+				BackendType: &backendTypeS3,
 			},
 		},
 		"OverrideComponent2": {
 			Config: Config{
-				Component: "OverrideComponent1",
+				Component: &componentOverrideComponent1,
 				Vars: map[string]any{
 					"key4": "val-override-4",
 				},
@@ -101,11 +118,11 @@ func TestProcessComponentConfigs(t *testing.T) {
 			},
 		},
 		"metadata/component": {
-			Metadata: Metadata{
-				Component: "infra/vpc",
+			Metadata: &Metadata{
+				Component: &componentInfraVPC,
 			},
 		},
-		"test/test-component": {
+		componentTestComponent: {
 			Config: Config{
 				Vars: map[string]any{
 					"enabled": true,
@@ -121,22 +138,22 @@ func TestProcessComponentConfigs(t *testing.T) {
 					},
 				},
 			},
-			Metadata: Metadata{
-				Type: "real",
+			Metadata: &Metadata{
+				Type: &componentMetadataTypeReal,
 			},
 		},
-		"test/test-component-override": {
+		componentTestComponentOverride: {
 			Config: Config{
-				Component: "test/test-component",
+				Component: &componentTestComponent,
 				Vars:      map[string]any{},
 				Envs: map[string]string{
 					"TEST_ENV_VAR1": "val1-override",
 					"TEST_ENV_VAR3": "val3-override",
 					"TEST_ENV_VAR4": "val4",
 				},
-				RemoteStateBackendType: "static",
+				RemoteStateBackendType: &backendTypeStatic,
 				RemoteStateBackendConfigs: map[string]any{
-					"static": map[string]any{
+					backendTypeStatic: map[string]any{
 						"val1": true,
 						"val2": "2",
 						"val3": 3,
@@ -149,22 +166,22 @@ func TestProcessComponentConfigs(t *testing.T) {
 					},
 				},
 			},
-			Metadata: Metadata{
-				TerraformWorkspace: "test-component-override-workspace-override",
+			Metadata: &Metadata{
+				TerraformWorkspace: &terraformWorkspaceOverride,
 			},
 		},
 		"test/test-component-override-2": {
 			Config: Config{
-				Component: "test/test-component-override",
+				Component: &componentTestComponentOverride,
 				Vars:      map[string]any{},
 				Envs: map[string]string{
 					"TEST_ENV_VAR1": "val1-override-2",
 					"TEST_ENV_VAR2": "val2-override-2",
 					"TEST_ENV_VAR4": "val4-override-2",
 				},
-				RemoteStateBackendType: "static",
+				RemoteStateBackendType: &backendTypeStatic,
 				RemoteStateBackendConfigs: map[string]any{
-					"static": map[string]any{
+					backendTypeStatic: map[string]any{
 						"val1": true,
 						"val2": "5",
 						"val3": 7,
@@ -178,8 +195,8 @@ func TestProcessComponentConfigs(t *testing.T) {
 					},
 				},
 			},
-			Metadata: Metadata{
-				TerraformWorkspacePattern: "{{.tenant}}-{{.environment}}-{{.stage}}-{{.component}}",
+			Metadata: &Metadata{
+				TerraformWorkspacePattern: &terraformWorkspacePattern,
 			},
 		},
 		"mixin/test-1": {
@@ -188,8 +205,8 @@ func TestProcessComponentConfigs(t *testing.T) {
 					"service_1_name": "mixin-1",
 				},
 			},
-			Metadata: Metadata{
-				Type: "abstract",
+			Metadata: &Metadata{
+				Type: &componentMetadataTypeAbstract,
 			},
 		},
 		"mixin/test-2": {
@@ -198,15 +215,15 @@ func TestProcessComponentConfigs(t *testing.T) {
 					"service_1_name": "mixin-2",
 				},
 			},
-			Metadata: Metadata{
-				Type: "abstract",
+			Metadata: &Metadata{
+				Type: &componentMetadataTypeAbstract,
 			},
 		},
 		"metadata/inherit-1": {
-			Metadata: Metadata{
-				Component: "test/test-component",
+			Metadata: &Metadata{
+				Component: &componentTestComponent,
 				Inherits: []string{
-					"test/test-component-override",
+					componentTestComponentOverride,
 					"test/test-component-override-2",
 					"mixin/test-1",
 					"mixin/test-2",
@@ -225,10 +242,10 @@ func TestProcessComponentConfigs(t *testing.T) {
 			expectedError: true,
 		},
 		{
-			componentName: "NoComponentOverride",
+			componentName: componentNoOverride,
 			expectedComponentInfo: &ConfigWithMetadata{
 				Config: Config{
-					Component: "NoComponentOverride",
+					Component: &componentNoOverride,
 					Vars: map[string]any{
 						"key1": "val1",
 						"key2": "val2",
@@ -237,9 +254,9 @@ func TestProcessComponentConfigs(t *testing.T) {
 						"env1": "val1",
 						"env2": "val2",
 					},
-					BackendType: "s3",
+					BackendType: &backendTypeS3,
 					BackendConfigs: map[string]any{
-						"s3": map[string]any{
+						backendTypeS3: map[string]any{
 							"encrypt":        true,
 							"bucket":         "cp-ue2-root-tfstate",
 							"key":            "terraform.tfstate",
@@ -248,19 +265,19 @@ func TestProcessComponentConfigs(t *testing.T) {
 							"region":         "us-east-2",
 							"role_arn":       nil,
 						},
-						"azurerm": map[string]any{
+						backendTypeAzurerm: map[string]any{
 							"subscription_id":      "88888-8888-8888-8888-8888888888",
 							"resource_group_name":  "rg-terraform-state",
 							"storage_account_name": "staterraformstate",
 							"container_name":       "dev-tfstate",
 							"key":                  "dev.atmos",
 						},
-						"remote": nil,
-						"vault":  nil,
+						backendTypeRemote: nil,
+						"vault":           nil,
 					},
-					RemoteStateBackendType: "s3",
+					RemoteStateBackendType: &backendTypeS3,
 					RemoteStateBackendConfigs: map[string]any{
-						"s3": map[string]any{
+						backendTypeS3: map[string]any{
 							"encrypt":        true,
 							"bucket":         "cp-ue2-root-tfstate",
 							"key":            "terraform.tfstate",
@@ -269,25 +286,24 @@ func TestProcessComponentConfigs(t *testing.T) {
 							"region":         "us-east-2",
 							"role_arn":       "arn:aws:iam::123456789012:role/cp-gbl-root-terraform",
 						},
-						"azurerm": map[string]any{
+						backendTypeAzurerm: map[string]any{
 							"subscription_id":      "88888-8888-8888-8888-8888888888",
 							"resource_group_name":  "rg-terraform-state",
 							"storage_account_name": "staterraformstate",
 							"container_name":       "dev-tfstate",
 							"key":                  "dev.atmos",
 						},
-						"remote": nil,
-						"vault":  nil,
+						backendTypeRemote: nil,
+						"vault":           nil,
 					},
-					Settings: map[string]any{},
 				},
 			},
 		},
 		{
-			componentName: "ComponentOverrides",
+			componentName: componentOverrides,
 			expectedComponentInfo: &ConfigWithMetadata{
 				Config: Config{
-					Component: "ComponentOverrides",
+					Component: &componentOverrides,
 					Vars: map[string]any{
 						"key1": "val1",
 						"key2": "val-override-2",
@@ -298,9 +314,9 @@ func TestProcessComponentConfigs(t *testing.T) {
 						"env2": "val2",
 						"env3": "val3",
 					},
-					BackendType: "remote",
+					BackendType: &backendTypeRemote,
 					BackendConfigs: map[string]any{
-						"s3": map[string]any{
+						backendTypeS3: map[string]any{
 							"encrypt":        true,
 							"bucket":         "cp-ue2-root-tfstate-override",
 							"key":            "terraform.tfstate",
@@ -309,19 +325,19 @@ func TestProcessComponentConfigs(t *testing.T) {
 							"region":         "us-east-2",
 							"role_arn":       nil,
 						},
-						"azurerm": map[string]any{
+						backendTypeAzurerm: map[string]any{
 							"subscription_id":      "88888-8888-8888-8888-8888888888",
 							"resource_group_name":  "rg-terraform-state",
 							"storage_account_name": "staterraformstate",
 							"container_name":       "dev-tfstate",
 							"key":                  "dev.atmos",
 						},
-						"remote": nil,
-						"vault":  nil,
+						backendTypeRemote: nil,
+						"vault":           nil,
 					},
-					RemoteStateBackendType: "azurerm",
+					RemoteStateBackendType: &backendTypeAzurerm,
 					RemoteStateBackendConfigs: map[string]any{
-						"s3": map[string]any{
+						backendTypeS3: map[string]any{
 							"encrypt":        true,
 							"bucket":         "cp-ue2-root-tfstate-override",
 							"key":            "terraform.tfstate",
@@ -330,15 +346,15 @@ func TestProcessComponentConfigs(t *testing.T) {
 							"region":         "us-east-2",
 							"role_arn":       "arn:aws:iam::123456789012:role/cp-gbl-root-terraform",
 						},
-						"azurerm": map[string]any{
+						backendTypeAzurerm: map[string]any{
 							"subscription_id":      "99999-9999-9999-9999-9999999999",
 							"resource_group_name":  "rg-terraform-state",
 							"storage_account_name": "staterraformstate",
 							"container_name":       "dev-tfstate",
 							"key":                  "dev.atmos",
 						},
-						"remote": nil,
-						"vault":  nil,
+						backendTypeRemote: nil,
+						"vault":           nil,
 					},
 					Settings: map[string]any{
 						"spacelift": map[string]any{
@@ -349,10 +365,10 @@ func TestProcessComponentConfigs(t *testing.T) {
 			},
 		},
 		{
-			componentName: "OverrideComponent1",
+			componentName: componentOverrideComponent1,
 			expectedComponentInfo: &ConfigWithMetadata{
 				Config: Config{
-					Component: "ComponentOverrides",
+					Component: &componentOverrides,
 					Vars: map[string]any{
 						"key1": "val1",
 						"key2": "val-override-2",
@@ -365,9 +381,9 @@ func TestProcessComponentConfigs(t *testing.T) {
 						"env3": "val3",
 						"env4": "val-4",
 					},
-					BackendType: "s3",
+					BackendType: &backendTypeS3,
 					BackendConfigs: map[string]any{
-						"s3": map[string]any{
+						backendTypeS3: map[string]any{
 							"encrypt":        true,
 							"bucket":         "cp-ue2-root-tfstate-override",
 							"key":            "terraform.tfstate",
@@ -376,19 +392,19 @@ func TestProcessComponentConfigs(t *testing.T) {
 							"region":         "us-east-2",
 							"role_arn":       nil,
 						},
-						"azurerm": map[string]any{
+						backendTypeAzurerm: map[string]any{
 							"subscription_id":      "88888-8888-8888-8888-8888888888",
 							"resource_group_name":  "rg-terraform-state",
 							"storage_account_name": "staterraformstate",
 							"container_name":       "dev-tfstate",
 							"key":                  "dev.atmos",
 						},
-						"remote": nil,
-						"vault":  nil,
+						backendTypeRemote: nil,
+						"vault":           nil,
 					},
-					RemoteStateBackendType: "azurerm",
+					RemoteStateBackendType: &backendTypeAzurerm,
 					RemoteStateBackendConfigs: map[string]any{
-						"s3": map[string]any{
+						backendTypeS3: map[string]any{
 							"encrypt":        true,
 							"bucket":         "cp-ue2-root-tfstate-override",
 							"key":            "terraform.tfstate",
@@ -397,15 +413,15 @@ func TestProcessComponentConfigs(t *testing.T) {
 							"region":         "us-east-2",
 							"role_arn":       "arn:aws:iam::123456789012:role/cp-gbl-root-terraform",
 						},
-						"azurerm": map[string]any{
+						backendTypeAzurerm: map[string]any{
 							"subscription_id":      "99999-9999-9999-9999-9999999999",
 							"resource_group_name":  "rg-terraform-state",
 							"storage_account_name": "staterraformstate",
 							"container_name":       "dev-tfstate",
 							"key":                  "dev.atmos",
 						},
-						"remote": nil,
-						"vault":  nil,
+						backendTypeRemote: nil,
+						"vault":           nil,
 					},
 					Settings: map[string]any{
 						"spacelift": map[string]any{
@@ -419,7 +435,7 @@ func TestProcessComponentConfigs(t *testing.T) {
 			componentName: "OverrideComponent2",
 			expectedComponentInfo: &ConfigWithMetadata{
 				Config: Config{
-					Component: "ComponentOverrides",
+					Component: &componentOverrides,
 					Vars: map[string]any{
 						"key1": "val1",
 						"key2": "val-override-2",
@@ -432,9 +448,9 @@ func TestProcessComponentConfigs(t *testing.T) {
 						"env3": "val3",
 						"env4": "val-override-4",
 					},
-					BackendType: "s3",
+					BackendType: &backendTypeS3,
 					BackendConfigs: map[string]any{
-						"s3": map[string]any{
+						backendTypeS3: map[string]any{
 							"encrypt":        true,
 							"bucket":         "cp-ue2-root-tfstate-override",
 							"key":            "terraform.tfstate",
@@ -443,19 +459,19 @@ func TestProcessComponentConfigs(t *testing.T) {
 							"region":         "us-east-2",
 							"role_arn":       nil,
 						},
-						"azurerm": map[string]any{
+						backendTypeAzurerm: map[string]any{
 							"subscription_id":      "88888-8888-8888-8888-8888888888",
 							"resource_group_name":  "rg-terraform-state",
 							"storage_account_name": "staterraformstate",
 							"container_name":       "dev-tfstate",
 							"key":                  "dev.atmos",
 						},
-						"remote": nil,
-						"vault":  nil,
+						backendTypeRemote: nil,
+						"vault":           nil,
 					},
-					RemoteStateBackendType: "azurerm",
+					RemoteStateBackendType: &backendTypeAzurerm,
 					RemoteStateBackendConfigs: map[string]any{
-						"s3": map[string]any{
+						backendTypeS3: map[string]any{
 							"encrypt":        true,
 							"bucket":         "cp-ue2-root-tfstate-override",
 							"key":            "terraform.tfstate",
@@ -464,15 +480,15 @@ func TestProcessComponentConfigs(t *testing.T) {
 							"region":         "us-east-2",
 							"role_arn":       "arn:aws:iam::123456789012:role/cp-gbl-root-terraform",
 						},
-						"azurerm": map[string]any{
+						backendTypeAzurerm: map[string]any{
 							"subscription_id":      "99999-9999-9999-9999-9999999999",
 							"resource_group_name":  "rg-terraform-state",
 							"storage_account_name": "staterraformstate",
 							"container_name":       "dev-tfstate",
 							"key":                  "dev.atmos",
 						},
-						"remote": nil,
-						"vault":  nil,
+						backendTypeRemote: nil,
+						"vault":           nil,
 					},
 					Settings: map[string]any{
 						"spacelift": map[string]any{
@@ -486,7 +502,7 @@ func TestProcessComponentConfigs(t *testing.T) {
 			componentName: "metadata/component",
 			expectedComponentInfo: &ConfigWithMetadata{
 				Config: Config{
-					Component: "infra/vpc",
+					Component: &componentInfraVPC,
 					Vars: map[string]any{
 						"key1": "val1",
 						"key2": "val2",
@@ -495,9 +511,9 @@ func TestProcessComponentConfigs(t *testing.T) {
 						"env1": "val1",
 						"env2": "val2",
 					},
-					BackendType: "s3",
+					BackendType: &backendTypeS3,
 					BackendConfigs: map[string]any{
-						"s3": map[string]any{
+						backendTypeS3: map[string]any{
 							"encrypt":        true,
 							"bucket":         "cp-ue2-root-tfstate",
 							"key":            "terraform.tfstate",
@@ -506,19 +522,19 @@ func TestProcessComponentConfigs(t *testing.T) {
 							"region":         "us-east-2",
 							"role_arn":       nil,
 						},
-						"azurerm": map[string]any{
+						backendTypeAzurerm: map[string]any{
 							"subscription_id":      "88888-8888-8888-8888-8888888888",
 							"resource_group_name":  "rg-terraform-state",
 							"storage_account_name": "staterraformstate",
 							"container_name":       "dev-tfstate",
 							"key":                  "dev.atmos",
 						},
-						"remote": nil,
-						"vault":  nil,
+						backendTypeRemote: nil,
+						"vault":           nil,
 					},
-					RemoteStateBackendType: "s3",
+					RemoteStateBackendType: &backendTypeS3,
 					RemoteStateBackendConfigs: map[string]any{
-						"s3": map[string]any{
+						backendTypeS3: map[string]any{
 							"encrypt":        true,
 							"bucket":         "cp-ue2-root-tfstate",
 							"key":            "terraform.tfstate",
@@ -527,20 +543,19 @@ func TestProcessComponentConfigs(t *testing.T) {
 							"region":         "us-east-2",
 							"role_arn":       "arn:aws:iam::123456789012:role/cp-gbl-root-terraform",
 						},
-						"azurerm": map[string]any{
+						backendTypeAzurerm: map[string]any{
 							"subscription_id":      "88888-8888-8888-8888-8888888888",
 							"resource_group_name":  "rg-terraform-state",
 							"storage_account_name": "staterraformstate",
 							"container_name":       "dev-tfstate",
 							"key":                  "dev.atmos",
 						},
-						"remote": nil,
-						"vault":  nil,
+						backendTypeRemote: nil,
+						"vault":           nil,
 					},
-					Settings: map[string]any{},
 				},
-				Metadata: Metadata{
-					Component: "infra/vpc",
+				Metadata: &Metadata{
+					Component: &componentInfraVPC,
 				},
 			},
 		},
@@ -548,7 +563,7 @@ func TestProcessComponentConfigs(t *testing.T) {
 			componentName: "metadata/inherit-1",
 			expectedComponentInfo: &ConfigWithMetadata{
 				Config: Config{
-					Component: "test/test-component",
+					Component: &componentTestComponent,
 					Vars: map[string]any{
 						"enabled":        true,
 						"key1":           "val1",
@@ -563,9 +578,9 @@ func TestProcessComponentConfigs(t *testing.T) {
 						"env1":          "val1",
 						"env2":          "val2",
 					},
-					BackendType: "s3",
+					BackendType: &backendTypeS3,
 					BackendConfigs: map[string]any{
-						"s3": map[string]any{
+						backendTypeS3: map[string]any{
 							"encrypt":        true,
 							"bucket":         "cp-ue2-root-tfstate",
 							"key":            "terraform.tfstate",
@@ -574,19 +589,19 @@ func TestProcessComponentConfigs(t *testing.T) {
 							"region":         "us-east-2",
 							"role_arn":       nil,
 						},
-						"azurerm": map[string]any{
+						backendTypeAzurerm: map[string]any{
 							"subscription_id":      "88888-8888-8888-8888-8888888888",
 							"resource_group_name":  "rg-terraform-state",
 							"storage_account_name": "staterraformstate",
 							"container_name":       "dev-tfstate",
 							"key":                  "dev.atmos",
 						},
-						"remote": nil,
-						"vault":  nil,
+						backendTypeRemote: nil,
+						"vault":           nil,
 					},
-					RemoteStateBackendType: "static",
+					RemoteStateBackendType: &backendTypeStatic,
 					RemoteStateBackendConfigs: map[string]any{
-						"s3": map[string]any{
+						backendTypeS3: map[string]any{
 							"encrypt":        true,
 							"bucket":         "cp-ue2-root-tfstate",
 							"key":            "terraform.tfstate",
@@ -595,16 +610,16 @@ func TestProcessComponentConfigs(t *testing.T) {
 							"region":         "us-east-2",
 							"role_arn":       "arn:aws:iam::123456789012:role/cp-gbl-root-terraform",
 						},
-						"azurerm": map[string]any{
+						backendTypeAzurerm: map[string]any{
 							"subscription_id":      "88888-8888-8888-8888-8888888888",
 							"resource_group_name":  "rg-terraform-state",
 							"storage_account_name": "staterraformstate",
 							"container_name":       "dev-tfstate",
 							"key":                  "dev.atmos",
 						},
-						"remote": nil,
-						"vault":  nil,
-						"static": map[string]any{
+						backendTypeRemote: nil,
+						"vault":           nil,
+						backendTypeStatic: map[string]any{
 							"val1": true,
 							"val2": "5",
 							"val3": 7,
@@ -618,10 +633,10 @@ func TestProcessComponentConfigs(t *testing.T) {
 						},
 					},
 				},
-				Metadata: Metadata{
-					Component: "test/test-component",
+				Metadata: &Metadata{
+					Component: &componentTestComponent,
 					Inherits: []string{
-						"test/test-component-override",
+						componentTestComponentOverride,
 						"test/test-component-override-2",
 						"mixin/test-1",
 						"mixin/test-2",
