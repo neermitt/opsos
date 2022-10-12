@@ -34,7 +34,7 @@ func ExecuteDescribeStacks(cmd *cobra.Command, options DescribeStackOptions) err
 		return err
 	}
 
-	stackNames, err := stackProcessor.GetStackNames(ctx)
+	stackNames, err := stackProcessor.GetStackNames()
 	if err != nil {
 		return err
 	}
@@ -44,14 +44,14 @@ func ExecuteDescribeStacks(cmd *cobra.Command, options DescribeStackOptions) err
 		if !utils.StringInSlice(options.Stack, stackNames) {
 			return fmt.Errorf("stack %s not found", options.Stack)
 		} else {
-			stk, err := stackProcessor.GetStack(ctx, options.Stack)
+			stk, err := stackProcessor.GetStack(options.Stack, stack.ProcessStackOptions{})
 			if err != nil {
 				return err
 			}
 			stacks = []*stack.Stack{stk}
 		}
 	} else {
-		stacks, err = stackProcessor.GetStacks(ctx, stackNames)
+		stacks, err = stackProcessor.GetStacks(stackNames)
 		if err != nil {
 			return err
 		}
@@ -60,9 +60,10 @@ func ExecuteDescribeStacks(cmd *cobra.Command, options DescribeStackOptions) err
 	output := describeStacksOutput{Stacks: make(map[string]describeStackOutput)}
 
 	for _, stk := range stacks {
+		filterAbstractComponents(stk)
 		output.Stacks[stk.Id] = describeStackOutput{
 			Name:       stk.Name,
-			Components: stk.ComponentTypes,
+			Components: stk.Components,
 		}
 	}
 
@@ -72,4 +73,17 @@ func ExecuteDescribeStacks(cmd *cobra.Command, options DescribeStackOptions) err
 	}
 
 	return nil
+}
+
+func filterAbstractComponents(stk *stack.Stack) {
+	for ct, components := range stk.Components {
+		filteredComponents := make(map[string]stack.ConfigWithMetadata, len(components))
+		for componentName, c := range components {
+			if c.Metadata != nil && c.Metadata.Type != nil && *c.Metadata.Type == "abstract" {
+				continue
+			}
+			filteredComponents[componentName] = c
+		}
+		stk.Components[ct] = filteredComponents
+	}
 }

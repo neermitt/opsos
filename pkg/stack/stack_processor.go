@@ -2,7 +2,6 @@ package stack
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"gopkg.in/yaml.v3"
 	"path"
@@ -13,28 +12,45 @@ import (
 
 	"github.com/goburrow/cache"
 	"github.com/mitchellh/mapstructure"
+	"github.com/neermitt/opsos/pkg/components"
 	"github.com/neermitt/opsos/pkg/config"
 	"github.com/neermitt/opsos/pkg/merge"
-	"github.com/neermitt/opsos/pkg/plugins"
 	"github.com/neermitt/opsos/pkg/stack/schema"
 	"github.com/neermitt/opsos/pkg/utils/fs"
 	"github.com/spf13/afero"
 )
 
 type Stack struct {
-	Id                 string
-	Name               string
-	ComponentTypes     map[string]ComponentConfigMap
-	Vars               map[string]any
-	KubeConfigProvider string
+	Id         string
+	Name       string
+	Components map[string]ComponentConfigMap
+	Vars       map[string]any
 }
 
-type ComponentConfigMap map[string]any
+type ComponentConfigMap map[string]ConfigWithMetadata
+
+type ConfigWithMetadata struct {
+	Command                *string              `yaml:"command,omitempty" json:"command,omitempty" mapstructure:"command,omitempty"`
+	Component              string               `yaml:"component,omitempty" json:"component,omitempty" mapstructure:"component,omitempty"`
+	Vars                   map[string]any       `yaml:"vars,omitempty" json:"vars,omitempty"  mapstructure:"vars,omitempty"`
+	Envs                   map[string]string    `yaml:"env,omitempty" json:"env,omitempty"  mapstructure:"env,omitempty"`
+	BackendType            *string              `yaml:"backend_type,omitempty" json:"backend_type,omitempty"  mapstructure:"backend_type,omitempty"`
+	Backend                map[string]any       `yaml:"backend,omitempty" json:"backend,omitempty"  mapstructure:"backend,omitempty"`
+	RemoteStateBackendType *string              `yaml:"remote_state_backend_type,omitempty" json:"remote_state_backend_type,omitempty"  mapstructure:"remote_state_backend_type,omitempty"`
+	RemoteStateBackend     map[string]any       `yaml:"remote_state_backend,omitempty" json:"remote_state_backend,omitempty" mapstructure:"remote_state_backend,omitempty"`
+	Settings               map[string]any       `yaml:"settings,omitempty" json:"settings,omitempty" mapstructure:"settings,omitempty"`
+	Metadata               *components.Metadata `yaml:"metadata,omitempty" json:"metadata,omitempty" mapstructure:"metadata,omitempty"`
+}
+
+type ProcessStackOptions struct {
+	ComponentName string
+	ComponentType string
+}
 
 type StackProcessor interface {
-	GetStackNames(ctx context.Context) ([]string, error)
-	GetStack(ctx context.Context, name string) (*Stack, error)
-	GetStacks(ctx context.Context, names []string) ([]*Stack, error)
+	GetStackNames() ([]string, error)
+	GetStack(name string, options ProcessStackOptions) (*Stack, error)
+	GetStacks(names []string) ([]*Stack, error)
 }
 
 func NewStackProcessor(source afero.Fs, includePaths []string, excludePaths []string, stackNamePattern string) StackProcessor {
@@ -66,7 +82,7 @@ type stackProcessor struct {
 	stackNameTemplate *template.Template
 }
 
-func (sp *stackProcessor) GetStackNames(_ context.Context) ([]string, error) {
+func (sp *stackProcessor) GetStackNames() ([]string, error) {
 	files, err := fs.AllFiles(sp.fl)
 	if err != nil {
 		return nil, err
@@ -77,22 +93,22 @@ func (sp *stackProcessor) GetStackNames(_ context.Context) ([]string, error) {
 	return files, err
 }
 
-func (sp *stackProcessor) GetStack(ctx context.Context, name string) (*Stack, error) {
+func (sp *stackProcessor) GetStack(name string, options ProcessStackOptions) (*Stack, error) {
 	stackConfig, err := sp.loadAndProcessStackFile(name)
 	if err != nil {
 		return nil, err
 	}
-	return sp.processStackConfig(ctx, stackConfig)
+	return sp.processStackConfig(stackConfig, options)
 }
 
-func (sp *stackProcessor) GetStacks(ctx context.Context, names []string) ([]*Stack, error) {
+func (sp *stackProcessor) GetStacks(names []string) ([]*Stack, error) {
 	stkConfigs, err := sp.checkCacheOrLoadStackFiles(names)
 	if err != nil {
 		return nil, err
 	}
 	out := make([]*Stack, len(stkConfigs))
 	for i, stkConfig := range stkConfigs {
-		stk, err := sp.processStackConfig(ctx, stkConfig)
+		stk, err := sp.processStackConfig(stkConfig, ProcessStackOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -148,9 +164,15 @@ func (sp *stackProcessor) loadAndProcessStackFile(name string) (*stack, error) {
 		return nil, err
 	}
 
-	importConfigs := make([]map[string]any, len(out.Import))
+	// Resolve stack files for imports
+	importFiles, err := sp.resolveStackFiles(out.Import)
+	if err != nil {
+		return nil, err
+	}
 
-	imports, err := sp.checkCacheOrLoadStackFiles(out.Import)
+	importConfigs := make([]map[string]any, len(importFiles))
+
+	imports, err := sp.checkCacheOrLoadStackFiles(importFiles)
 
 	for i, imp := range imports {
 		importConfigs[i] = imp.Config
@@ -159,6 +181,26 @@ func (sp *stackProcessor) loadAndProcessStackFile(name string) (*stack, error) {
 	out.Config, err = merge.Merge(append(importConfigs, out.Config))
 
 	return out, nil
+}
+
+func (sp *stackProcessor) resolveStackFiles(filePatterns []string) ([]string, error) {
+	matchedStackFiles := make([]string, 0, 2*len(filePatterns))
+	for _, filePattern := range filePatterns {
+		ext := filepath.Ext(filePattern)
+		filePath := filePattern
+		if ext := ext; len(ext) == 0 {
+			filePath = filePattern + ".yaml"
+		}
+		match, err := afero.Glob(sp.fs, filePath)
+		if err != nil {
+			return nil, err
+		}
+		for _, m := range match {
+			matchedStackFiles = append(matchedStackFiles, strings.TrimSuffix(m, ".yaml"))
+		}
+	}
+
+	return matchedStackFiles, nil
 }
 
 func (sp *stackProcessor) loadStackFile(name string) (*stack, error) {
@@ -188,7 +230,7 @@ type stack struct {
 	Config map[string]any `yaml:",inline"`
 }
 
-func (sp *stackProcessor) processStackConfig(ctx context.Context, stk *stack) (*Stack, error) {
+func (sp *stackProcessor) processStackConfig(stk *stack, options ProcessStackOptions) (*Stack, error) {
 	var stackConfig schema.StackConfig
 	err := mapstructure.Decode(stk.Config, &stackConfig)
 	if err != nil {
@@ -200,38 +242,69 @@ func (sp *stackProcessor) processStackConfig(ctx context.Context, stk *stack) (*
 		return nil, err
 	}
 
-	providers := plugins.GetProviders()
+	var componentTypes []string
+	if options.ComponentType != "" {
+		componentTypes = []string{options.ComponentType}
+	} else {
+		for k := range stackConfig.ComponentTypeSettings {
+			componentTypes = append(componentTypes, k)
+		}
+	}
 
-	componentTypes := make(map[string]ComponentConfigMap, len(providers))
+	processComponentConfigs := make(map[string]ComponentConfigMap, len(componentTypes))
 
-	for _, providerName := range providers {
-		componentTypeMap, err := sp.processComponentType(ctx, stackConfig, providerName)
+	for _, componentType := range componentTypes {
+		componentTypeBaseConfig, err := getBaseConfigForComponentType(stackConfig, componentType)
 		if err != nil {
 			return nil, err
 		}
-		componentTypes[providerName] = componentTypeMap
 
+		var componentsToProcess []string
+		if options.ComponentName != "" {
+			componentsToProcess = []string{options.ComponentName}
+		} else {
+			for k := range stackConfig.Components.Types[componentType] {
+				componentsToProcess = append(componentsToProcess, k)
+			}
+		}
+
+		componentsMap := ComponentConfigMap{}
+		for _, k := range componentsToProcess {
+			componentProcessedConfig, err := components.ProcessComponentConfigs(stk.name, componentTypeBaseConfig, stackConfig.Components.Types[componentType], k)
+			if err != nil {
+				return nil, err
+			}
+			configWithMetadata, err := toProcessedConfig(stk.name, k, componentProcessedConfig)
+			if err != nil {
+				return nil, err
+			}
+			componentsMap[k] = configWithMetadata
+		}
+
+		processComponentConfigs[componentType] = componentsMap
 	}
 
-	return &Stack{Id: stk.name, Name: stackName, ComponentTypes: componentTypes, Vars: stackConfig.Vars, KubeConfigProvider: stackConfig.KubeConfigProvider}, nil
+	return &Stack{Id: stk.name, Name: stackName, Components: processComponentConfigs, Vars: stackConfig.Vars}, nil
 }
 
-func (sp *stackProcessor) processComponentType(ctx context.Context, stackConfig schema.StackConfig, componentType string) (ComponentConfigMap, error) {
+func (sp *stackProcessor) processComponentType(stackName string, stackConfig schema.StackConfig, componentType string) (ComponentConfigMap, error) {
 
-	provider, ok := plugins.GetProvider(ctx, componentType)
-	if !ok {
-		return ComponentConfigMap{}, fmt.Errorf("provider plugin not found for componentType: %s", componentType)
+	componentTypeBaseConfig, err := getBaseConfigForComponentType(stackConfig, componentType)
+	if err != nil {
+		return nil, err
 	}
 
-	providerStackContext := provider.InitStackContext(context.Background(), stackConfig)
-
 	componentsMap := ComponentConfigMap{}
-	for k, v := range stackConfig.Components.Types[componentType] {
-		componentExecConfig, err := provider.ProcessComponentConfig(providerStackContext, k, v)
+	for k := range stackConfig.Components.Types[componentType] {
+		componentProcessedConfig, err := components.ProcessComponentConfigs(stackName, componentTypeBaseConfig, stackConfig.Components.Types[componentType], k)
 		if err != nil {
 			return ComponentConfigMap{}, err
 		}
-		componentsMap[k] = componentExecConfig
+		processedConfig, err := toProcessedConfig(stackName, k, componentProcessedConfig)
+		if err != nil {
+			return ComponentConfigMap{}, err
+		}
+		componentsMap[k] = processedConfig
 	}
 	return componentsMap, nil
 }
@@ -242,4 +315,53 @@ func (sp *stackProcessor) getStackName(vars map[string]any) (string, error) {
 		return "", err
 	}
 	return buff.String(), nil
+}
+
+func getBaseConfigForComponentType(config schema.StackConfig, componentType string) (components.Config, error) {
+	globalConfig := components.Config{
+		Vars:     config.Vars,
+		Envs:     config.Envs,
+		Settings: config.Settings,
+	}
+	componentTypeSettings := config.ComponentTypeSettings[componentType]
+	backend := componentTypeSettings.BackendType
+	remoteStateBackend := componentTypeSettings.RemoteStateBackendType
+	stackComponentConfig := components.Config{
+		Vars:                      componentTypeSettings.Vars,
+		Envs:                      componentTypeSettings.Envs,
+		BackendType:               &backend,
+		BackendConfigs:            componentTypeSettings.Backend,
+		RemoteStateBackendType:    &remoteStateBackend,
+		RemoteStateBackendConfigs: componentTypeSettings.RemoteStateBackend,
+		Settings:                  componentTypeSettings.Settings,
+	}
+	return components.MergeConfigs(globalConfig, stackComponentConfig)
+}
+
+func toProcessedConfig(stackName string, componentName string, componentProcessedConfig *components.ConfigWithMetadata) (ConfigWithMetadata, error) {
+	var processedBackend, processedRemoteStateBackend map[string]any
+	if componentProcessedConfig.BackendType == nil {
+		var found bool
+		processedBackend, found = componentProcessedConfig.BackendConfigs[*componentProcessedConfig.BackendType].(map[string]any)
+		if !found {
+			return ConfigWithMetadata{}, fmt.Errorf("backend %[3]s config not found for component %[2]s in stack %[1]s", stackName, componentName, *componentProcessedConfig.BackendType)
+		}
+		processedRemoteStateBackend, found = componentProcessedConfig.RemoteStateBackendConfigs[*componentProcessedConfig.RemoteStateBackendType].(map[string]any)
+		if !found {
+			return ConfigWithMetadata{}, fmt.Errorf("remote_state_backend %[3]s config not found for component %[2]s in stack %[1]s", stackName, componentName, *componentProcessedConfig.RemoteStateBackendType)
+		}
+	}
+	configWithMetadata := ConfigWithMetadata{
+		Command:                componentProcessedConfig.Command,
+		Component:              *componentProcessedConfig.Component,
+		Vars:                   componentProcessedConfig.Vars,
+		Envs:                   componentProcessedConfig.Envs,
+		BackendType:            componentProcessedConfig.BackendType,
+		Backend:                processedBackend,
+		RemoteStateBackendType: componentProcessedConfig.RemoteStateBackendType,
+		RemoteStateBackend:     processedRemoteStateBackend,
+		Settings:               componentProcessedConfig.Settings,
+		Metadata:               componentProcessedConfig.Metadata,
+	}
+	return configWithMetadata, nil
 }

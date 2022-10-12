@@ -9,28 +9,28 @@ import (
 )
 
 type Config struct {
-	Command                   *string           `yaml:"command,omitempty" json:"command,omitempty"`
-	Component                 *string           `yaml:"component,omitempty" json:"component,omitempty"`
-	Vars                      map[string]any    `yaml:"vars,omitempty" json:"vars,omitempty"`
-	Envs                      map[string]string `yaml:"envs,omitempty" json:"envs,omitempty"`
-	BackendType               *string           `yaml:"backend_type,omitempty" json:"backend_type,omitempty"`
-	BackendConfigs            map[string]any    `yaml:"backend,omitempty" json:"backend,omitempty"`
-	RemoteStateBackendType    *string           `yaml:"remote_state_backend_type,omitempty" json:"remote_state_backend_type,omitempty"`
-	RemoteStateBackendConfigs map[string]any    `yaml:"remote_state_backend,omitempty" json:"remote_state_backend,omitempty"`
-	Settings                  map[string]any    `yaml:"settings,omitempty" json:"settings,omitempty"`
+	Command                   *string           `yaml:"command,omitempty" json:"command,omitempty" mapstructure:"command,omitempty"`
+	Component                 *string           `yaml:"component,omitempty" json:"component,omitempty" mapstructure:"component,omitempty"`
+	Vars                      map[string]any    `yaml:"vars,omitempty" json:"vars,omitempty"  mapstructure:"vars,omitempty"`
+	Envs                      map[string]string `yaml:"env,omitempty" json:"env,omitempty"  mapstructure:"env,omitempty"`
+	BackendType               *string           `yaml:"backend_type,omitempty" json:"backend_type,omitempty"  mapstructure:"backend_type,omitempty"`
+	BackendConfigs            map[string]any    `yaml:"backend,omitempty" json:"backend,omitempty"  mapstructure:"backend,omitempty"`
+	RemoteStateBackendType    *string           `yaml:"remote_state_backend_type,omitempty" json:"remote_state_backend_type,omitempty"  mapstructure:"remote_state_backend_type,omitempty"`
+	RemoteStateBackendConfigs map[string]any    `yaml:"remote_state_backend,omitempty" json:"remote_state_backend,omitempty" mapstructure:"remote_state_backend,omitempty"`
+	Settings                  map[string]any    `yaml:"settings,omitempty" json:"settings,omitempty" mapstructure:"settings,omitempty"`
 }
 
 type ConfigWithMetadata struct {
-	Config   `yaml:",inline" json:",inline"`
-	Metadata *Metadata `yaml:"metadata,omitempty" json:"metadata,omitempty"`
+	Config   `yaml:",inline" json:",inline" mapstructure:",squash"`
+	Metadata *Metadata `yaml:"metadata,omitempty" json:"metadata,omitempty" mapstructure:"metadata,omitempty"`
 }
 
 type Metadata struct {
-	Type                      *string  `yaml:"type,omitempty" json:"type,omitempty"`
-	Component                 *string  `yaml:"component,omitempty" json:"component,omitempty"`
-	Inherits                  []string `yaml:"inherits,omitempty" json:"inherits,omitempty"`
-	TerraformWorkspace        *string  `yaml:"terraform_workspace,omitempty" json:"terraform_workspace,omitempty"`
-	TerraformWorkspacePattern *string  `yaml:"terraform_workspace_pattern,omitempty" json:"terraform_workspace_pattern,omitempty"`
+	Type                      *string  `yaml:"type,omitempty" json:"type,omitempty" mapstructure:"type,omitempty"`
+	Component                 *string  `yaml:"component,omitempty" json:"component,omitempty" mapstructure:"component,omitempty"`
+	Inherits                  []string `yaml:"inherits,omitempty" json:"inherits,omitempty" mapstructure:"inherits,omitempty"`
+	TerraformWorkspace        *string  `yaml:"terraform_workspace,omitempty" json:"terraform_workspace,omitempty" mapstructure:"terraform_workspace,omitempty"`
+	TerraformWorkspacePattern *string  `yaml:"terraform_workspace_pattern,omitempty" json:"terraform_workspace_pattern,omitempty" mapstructure:"terraform_workspace_pattern,omitempty"`
 }
 
 func ProcessComponentConfigs(stackName string, baseConfig Config, componentsConfigMap map[string]ConfigWithMetadata, componentName string) (*ConfigWithMetadata, error) {
@@ -40,7 +40,7 @@ func ProcessComponentConfigs(stackName string, baseConfig Config, componentsConf
 	}
 
 	// merge with base config
-	mc, err := mergeConfigs(baseConfig, componentConfig.Config)
+	mc, err := MergeConfigs(baseConfig, componentConfig.Config)
 	if err != nil {
 		return nil, errors.Wrap(err, fmt.Sprintf("failed to merge config for %[2]s in stack %[1]s", stackName, componentName))
 	}
@@ -52,7 +52,7 @@ func ProcessComponentConfigs(stackName string, baseConfig Config, componentsConf
 	}
 
 	// process remoteBackend
-	if componentConfig.RemoteStateBackendType == nil {
+	if componentConfig.RemoteStateBackendType == nil || *componentConfig.RemoteStateBackendType == "" {
 		componentConfig.RemoteStateBackendType = componentConfig.BackendType
 	}
 
@@ -145,7 +145,7 @@ func mergeConfigList(configs []ConfigWithMetadata) (Config, error) {
 	baseConfig := configs[0]
 
 	for _, config := range configs[1:] {
-		merged, err := mergeConfigs(baseConfig.Config, config.Config)
+		merged, err := MergeConfigs(baseConfig.Config, config.Config)
 		if err != nil {
 			return Config{}, err
 		}
@@ -155,7 +155,7 @@ func mergeConfigList(configs []ConfigWithMetadata) (Config, error) {
 	return baseConfig.Config, nil
 }
 
-func mergeConfigs(config1 Config, config2 Config) (Config, error) {
+func MergeConfigs(config1 Config, config2 Config) (Config, error) {
 	c1, err := toMap(config1)
 	if err != nil {
 		return Config{}, err
