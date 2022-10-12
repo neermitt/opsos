@@ -62,10 +62,12 @@ func TestProcessComponentConfigs(t *testing.T) {
 	terraformWorkspaceOverride := "test-component-override-workspace-override"
 	terraformWorkspacePattern := "{{.tenant}}-{{.environment}}-{{.stage}}-{{.component}}"
 
+	commandOverride := "/usr/local/bin/terraform"
 	componentsConfigMap := map[string]ConfigWithMetadata{
 		componentNoOverride: {},
 		componentOverrides: {
 			Config: Config{
+				Command: &commandOverride,
 				Vars: map[string]any{
 					"key2": "val-override-2",
 					"key3": "val-3",
@@ -303,6 +305,7 @@ func TestProcessComponentConfigs(t *testing.T) {
 			componentName: componentOverrides,
 			expectedComponentInfo: &ConfigWithMetadata{
 				Config: Config{
+					Command:   &commandOverride,
 					Component: &componentOverrides,
 					Vars: map[string]any{
 						"key1": "val1",
@@ -368,6 +371,7 @@ func TestProcessComponentConfigs(t *testing.T) {
 			componentName: componentOverrideComponent1,
 			expectedComponentInfo: &ConfigWithMetadata{
 				Config: Config{
+					Command:   &commandOverride,
 					Component: &componentOverrides,
 					Vars: map[string]any{
 						"key1": "val1",
@@ -435,6 +439,7 @@ func TestProcessComponentConfigs(t *testing.T) {
 			componentName: "OverrideComponent2",
 			expectedComponentInfo: &ConfigWithMetadata{
 				Config: Config{
+					Command:   &commandOverride,
 					Component: &componentOverrides,
 					Vars: map[string]any{
 						"key1": "val1",

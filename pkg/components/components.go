@@ -9,6 +9,7 @@ import (
 )
 
 type Config struct {
+	Command                   *string           `yaml:"command,omitempty" json:"command,omitempty"`
 	Component                 *string           `yaml:"component,omitempty" json:"component,omitempty"`
 	Vars                      map[string]any    `yaml:"vars,omitempty" json:"vars,omitempty"`
 	Envs                      map[string]string `yaml:"envs,omitempty" json:"envs,omitempty"`
