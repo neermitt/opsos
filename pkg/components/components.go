@@ -33,7 +33,7 @@ type Metadata struct {
 	TerraformWorkspacePattern *string  `yaml:"terraform_workspace_pattern,omitempty" json:"terraform_workspace_pattern,omitempty"`
 }
 
-func processComponentConfigs(stackName string, baseConfig Config, componentsConfigMap map[string]ConfigWithMetadata, componentName string) (*ConfigWithMetadata, error) {
+func ProcessComponentConfigs(stackName string, baseConfig Config, componentsConfigMap map[string]ConfigWithMetadata, componentName string) (*ConfigWithMetadata, error) {
 	componentConfig, err := loadComponentConfig(stackName, componentsConfigMap, componentName)
 	if err != nil {
 		return nil, err

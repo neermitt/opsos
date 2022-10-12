@@ -655,7 +655,7 @@ func TestProcessComponentConfigs(t *testing.T) {
 		t.Run(tc.componentName, func(t *testing.T) {
 			testCase := tc
 			t.Parallel()
-			componentInfo, err := processComponentConfigs("testStack", baseConfig, componentsConfigMap, testCase.componentName)
+			componentInfo, err := ProcessComponentConfigs("testStack", baseConfig, componentsConfigMap, testCase.componentName)
 			if testCase.expectedError {
 				require.Error(t, err)
 			} else {
