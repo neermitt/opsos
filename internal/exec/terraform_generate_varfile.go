@@ -18,7 +18,7 @@ type TerraformGenerateVarfileOptions struct {
 
 // ExecuteTerraformGenerateVarfile executes `terraform generate varfile` command
 func ExecuteTerraformGenerateVarfile(ctx context.Context, stackName string, component string, options TerraformGenerateVarfileOptions) error {
-	stk, err := stack.LoadStack(ctx, stack.LoadStackOptions{Stack: stackName, ComponentType: "terraform", ComponentName: component})
+	stk, err := stack.LoadStack(ctx, stack.LoadStackOptions{Stack: stackName, ComponentType: terraformComponentType, ComponentName: component})
 	if err != nil {
 		return err
 	}
@@ -45,6 +45,7 @@ func ExecuteTerraformGenerateVarfile(ctx context.Context, stackName string, comp
 	}
 
 	return terraform.GenerateVarFileFile(terraform.ExecutionContext{
+		Config:          config.GetConfig(ctx),
 		Stack:           stk,
 		ComponentName:   component,
 		ComponentConfig: componentConfig,

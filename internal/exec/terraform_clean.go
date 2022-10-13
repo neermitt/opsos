@@ -3,23 +3,20 @@ package exec
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/neermitt/opsos/pkg/config"
 	"github.com/neermitt/opsos/pkg/plugins/terraform"
 	"github.com/neermitt/opsos/pkg/stack"
+	"github.com/neermitt/opsos/pkg/utils"
 )
 
-const (
-	terraformComponentType = "terraform"
-)
-
-type TerraformGenerateBackendOptions struct {
-	DryRun bool
-	Format string
+type TerraformCleanOptions struct {
+	ClearDataDir bool
 }
 
-// ExecuteTerraformGenerateBackend executes `terraform generate backend` command
-func ExecuteTerraformGenerateBackend(ctx context.Context, stackName string, component string, options TerraformGenerateBackendOptions) error {
+// ExecuteTerraformClean executes `terraform clean` command
+func ExecuteTerraformClean(ctx context.Context, stackName string, component string, options TerraformCleanOptions) error {
 	stk, err := stack.LoadStack(ctx, stack.LoadStackOptions{Stack: stackName, ComponentType: terraformComponentType, ComponentName: component})
 	if err != nil {
 		return err
@@ -34,18 +31,24 @@ func ExecuteTerraformGenerateBackend(ctx context.Context, stackName string, comp
 		return fmt.Errorf("terraform component %s not found", component)
 	}
 
+	fmt.Print("Component backend config:\\n\\n")
+	err = utils.Get("json")(os.Stdout, componentConfig.Vars)
+	if err != nil {
+		return err
+	}
+
 	conf := config.GetConfig(ctx)
 	workingDir, _, err := getComponentWorkingDirectory(conf, terraformComponentType, componentConfig)
 	if err != nil {
 		return err
 	}
 
-	return terraform.GenerateBackendFile(terraform.ExecutionContext{
+	return terraform.Clean(terraform.ExecutionContext{
 		Config:          config.GetConfig(ctx),
 		Stack:           stk,
 		ComponentName:   component,
 		ComponentConfig: componentConfig,
 		WorkingDir:      workingDir,
-		DryRun:          options.DryRun,
-	}, options.Format)
+		DryRun:          false,
+	}, options.ClearDataDir)
 }
