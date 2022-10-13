@@ -3,11 +3,10 @@ package exec
 import (
 	"context"
 	"fmt"
-	"github.com/neermitt/opsos/pkg/config"
 	"os"
-	"path"
-	"strings"
 
+	"github.com/neermitt/opsos/pkg/config"
+	"github.com/neermitt/opsos/pkg/plugins/terraform"
 	"github.com/neermitt/opsos/pkg/stack"
 	"github.com/neermitt/opsos/pkg/utils"
 )
@@ -28,43 +27,28 @@ func ExecuteTerraformGenerateVarfile(ctx context.Context, stackName string, comp
 	if !found {
 		return fmt.Errorf("no terraform component found")
 	}
-	info, found := terraformComponents[component]
+	componentConfig, found := terraformComponents[component]
 	if !found {
 		return fmt.Errorf("terraform component %s not found", component)
 	}
 
 	fmt.Print("Component backend config:\\n\\n")
-	err = utils.Get("json")(os.Stdout, info.Vars)
+	err = utils.Get("json")(os.Stdout, componentConfig.Vars)
 	if err != nil {
 		return err
 	}
 
 	conf := config.GetConfig(ctx)
-	workingDir, _, err := getComponentWorkingDirectory(conf, terraformComponentType, info)
+	workingDir, _, err := getComponentWorkingDirectory(conf, terraformComponentType, componentConfig)
 	if err != nil {
 		return err
 	}
 
-	// Write backend config to file
-	var backendFilePath = constructTerraformComponentVarfilePath(stk, component, workingDir)
-
-	fmt.Println()
-	fmt.Printf("Writing the backend config to file:\n%s\n", backendFilePath)
-	if !options.DryRun {
-		err = utils.PrintOrWriteToFile(options.Format, backendFilePath, info.Vars, 0644)
-		if err != nil {
-			return err
-		}
-
-	}
-	return nil
-}
-
-func constructTerraformComponentVarfileName(stk *stack.Stack, componentName string) string {
-	fmtdComponentFolderPrefix := strings.ReplaceAll(componentName, "/", "-")
-	return fmt.Sprintf("%s-%s.terraform.tfvars.json", stk.Name, fmtdComponentFolderPrefix)
-}
-
-func constructTerraformComponentVarfilePath(stk *stack.Stack, componentName string, workingDir string) string {
-	return path.Join(workingDir, constructTerraformComponentVarfileName(stk, componentName))
+	return terraform.GenerateVarFileFile(terraform.ExecutionContext{
+		Stack:           stk,
+		ComponentName:   component,
+		ComponentConfig: componentConfig,
+		WorkingDir:      workingDir,
+		DryRun:          options.DryRun,
+	}, options.Format)
 }
