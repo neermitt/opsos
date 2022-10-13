@@ -340,7 +340,7 @@ func getBaseConfigForComponentType(config schema.StackConfig, componentType stri
 
 func toProcessedConfig(stackName string, componentName string, componentProcessedConfig *components.ConfigWithMetadata) (ConfigWithMetadata, error) {
 	var processedBackend, processedRemoteStateBackend map[string]any
-	if componentProcessedConfig.BackendType == nil {
+	if componentProcessedConfig.BackendType != nil && *componentProcessedConfig.BackendType != "" {
 		var found bool
 		processedBackend, found = componentProcessedConfig.BackendConfigs[*componentProcessedConfig.BackendType].(map[string]any)
 		if !found {

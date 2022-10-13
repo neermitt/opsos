@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"path"
-	"path/filepath"
 	"strings"
 
 	"github.com/neermitt/opsos/pkg/config"
@@ -61,8 +60,7 @@ func ExecHelmfile(ctx context.Context, command string, stackName string, compone
 	}
 
 	// Working Dir
-	workingDir := path.Join(conf.BasePath, conf.Components.Helmfile.BasePath, info.Component)
-	absWorkingDir, err := filepath.Abs(workingDir)
+	workingDir, absWorkingDir, err := getComponentWorkingDirectory(conf, providerName, info)
 	if err != nil {
 		return err
 	}

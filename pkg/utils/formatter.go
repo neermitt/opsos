@@ -1,4 +1,4 @@
-package formatters
+package utils
 
 import (
 	"fmt"
@@ -13,6 +13,8 @@ func Get(format string) Formatter {
 		return jsonFormatter
 	case "yaml":
 		return yamlFormatter
+	case "hcl":
+		return hclFormatter
 	default:
 		return func(w io.Writer, any interface{}) error {
 			return fmt.Errorf("invalid format type: %s", format)

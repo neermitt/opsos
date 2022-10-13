@@ -1,4 +1,4 @@
-package formatters
+package utils
 
 import (
 	"bufio"
