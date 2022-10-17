@@ -1,10 +1,10 @@
 package exec
 
 import (
+	"github.com/neermitt/opsos/pkg/utils"
 	"os"
 
 	"github.com/neermitt/opsos/pkg/config"
-	"github.com/neermitt/opsos/pkg/formatters"
 	"github.com/spf13/cobra"
 )
 
@@ -16,7 +16,7 @@ type DescribeConfigOptions struct {
 func ExecuteDescribeConfig(cmd *cobra.Command, options DescribeConfigOptions) error {
 	conf := config.GetConfig(cmd.Context())
 
-	err := formatters.Get(options.Format)(os.Stdout, conf)
+	err := utils.Get(options.Format)(os.Stdout, conf)
 	if err != nil {
 		return err
 	}

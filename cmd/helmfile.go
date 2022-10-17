@@ -3,6 +3,8 @@ package cmd
 import (
 	"github.com/neermitt/opsos/internal/exec"
 	"github.com/spf13/cobra"
+
+	_ "github.com/neermitt/opsos/pkg/plugins/kind"
 )
 
 var (

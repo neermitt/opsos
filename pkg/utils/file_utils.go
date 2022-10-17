@@ -3,8 +3,6 @@ package utils
 import (
 	"io"
 	"os"
-
-	"github.com/neermitt/opsos/pkg/formatters"
 )
 
 func FileExists(filename string) bool {
@@ -27,5 +25,5 @@ func PrintOrWriteToFile(format string, filePath string, data any, fileMode os.Fi
 		w = f
 	}
 
-	return formatters.Get(format)(w, data)
+	return Get(format)(w, data)
 }

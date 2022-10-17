@@ -31,3 +31,5 @@ bin/
 
 
 **/*.vars.yaml
+**/backend.tf*
+**/*.terraform.tfvars*

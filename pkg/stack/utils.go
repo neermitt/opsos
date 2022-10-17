@@ -26,7 +26,9 @@ func globMatchers(paths []string) fs.Matcher {
 }
 
 type LoadStackOptions struct {
-	Stack string
+	Stack         string
+	ComponentType string
+	ComponentName string
 }
 
 func LoadStack(ctx context.Context, options LoadStackOptions) (*Stack, error) {
@@ -36,7 +38,7 @@ func LoadStack(ctx context.Context, options LoadStackOptions) (*Stack, error) {
 		return nil, nil
 	}
 
-	stackNames, err := stackProcessor.GetStackNames(ctx)
+	stackNames, err := stackProcessor.GetStackNames()
 	if err != nil {
 		return nil, nil
 	}
@@ -48,5 +50,5 @@ func LoadStack(ctx context.Context, options LoadStackOptions) (*Stack, error) {
 	if !utils.StringInSlice(options.Stack, stackNames) {
 		return nil, fmt.Errorf("stack %s not found", options.Stack)
 	}
-	return stackProcessor.GetStack(ctx, options.Stack)
+	return stackProcessor.GetStack(options.Stack, ProcessStackOptions{ComponentType: options.ComponentType, ComponentName: options.ComponentName})
 }
