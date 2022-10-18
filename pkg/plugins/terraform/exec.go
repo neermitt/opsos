@@ -3,7 +3,9 @@ package terraform
 import (
 	"context"
 	"fmt"
+	"os"
 
+	"github.com/neermitt/opsos/pkg/components"
 	"github.com/neermitt/opsos/pkg/config"
 	"github.com/neermitt/opsos/pkg/stack"
 	"github.com/neermitt/opsos/pkg/utils"
@@ -19,6 +21,69 @@ type ExecutionContext struct {
 	DryRun          bool
 	AdditionalArgs  []string
 	PlanFile        string
+	VarFile         string
+	CmdEnv          []string
+}
+
+type Option func(execCtx *ExecutionContext)
+
+func WithAdditionalArgs(args []string) Option {
+	return func(execCtx *ExecutionContext) {
+		execCtx.AdditionalArgs = args
+	}
+}
+func WithDryRun() Option {
+	return func(execCtx *ExecutionContext) {
+		execCtx.DryRun = true
+	}
+}
+
+func NewExecutionContext(ctx context.Context, stackName string, component string, options ...Option) (ExecutionContext, error) {
+	stk, err := stack.LoadStack(ctx, stack.LoadStackOptions{Stack: stackName, ComponentType: ComponentType, ComponentName: component})
+	if err != nil {
+		return ExecutionContext{}, err
+	}
+
+	terraformComponents, found := stk.Components[ComponentType]
+	if !found {
+		return ExecutionContext{}, fmt.Errorf("no terraform component found")
+	}
+	componentConfig, found := terraformComponents[component]
+	if !found {
+		return ExecutionContext{}, fmt.Errorf("terraform component %s not found", component)
+	}
+
+	if err != nil {
+		return ExecutionContext{}, err
+	}
+
+	conf := config.GetConfig(ctx)
+	workingDir := components.GetWorkingDirectory(conf, ComponentType, componentConfig.Component)
+
+	cmdEnv, err := buildCommandEnvs(componentConfig)
+	if err != nil {
+		return ExecutionContext{}, err
+	}
+
+	planFile := constructPlanfileName(stk, component)
+	varFile := constructVarfileName(stk, component)
+
+	exeCtx := ExecutionContext{
+		Context:         ctx,
+		Config:          conf,
+		Stack:           stk,
+		ComponentName:   component,
+		ComponentConfig: componentConfig,
+		WorkingDir:      workingDir,
+		DryRun:          false,
+		PlanFile:        planFile,
+		VarFile:         varFile,
+		CmdEnv:          cmdEnv,
+	}
+	for _, opt := range options {
+		opt(&exeCtx)
+	}
+	return exeCtx, nil
 }
 
 func getCommand(exeCtx ExecutionContext) string {
@@ -29,14 +94,25 @@ func getCommand(exeCtx ExecutionContext) string {
 	return command
 }
 
-func buildCommandEnvs(exeCtx ExecutionContext) ([]string, error) {
+func buildCommandEnvs(config stack.ConfigWithMetadata) ([]string, error) {
 	var cmdEnv []string
-	for k, v := range exeCtx.ComponentConfig.Envs {
-		pv, err := utils.ProcessTemplate(v, exeCtx.ComponentConfig.Vars)
+	for k, v := range config.Envs {
+		pv, err := utils.ProcessTemplate(v, config.Vars)
 		if err != nil {
 			return nil, err
 		}
 		cmdEnv = append(cmdEnv, fmt.Sprintf("%s=%s", k, pv))
 	}
 	return cmdEnv, nil
+}
+
+func ExecuteCommand(exeCtx ExecutionContext, args []string) error {
+	command := getCommand(exeCtx)
+
+	return utils.ExecuteShellCommand(exeCtx.Context, command, args, utils.ExecOptions{
+		DryRun:           exeCtx.DryRun,
+		Env:              exeCtx.CmdEnv,
+		WorkingDirectory: exeCtx.WorkingDir,
+		StdOut:           os.Stdout,
+	})
 }

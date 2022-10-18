@@ -2,10 +2,12 @@ package components
 
 import (
 	"fmt"
-	"gopkg.in/yaml.v3"
-
-	"github.com/neermitt/opsos/pkg/merge"
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v3"
+	"path"
+
+	"github.com/neermitt/opsos/pkg/config"
+	"github.com/neermitt/opsos/pkg/merge"
 )
 
 type Config struct {
@@ -144,8 +146,8 @@ func loadInheritanceTree(stackName string, componentsConfigMap map[string]Config
 func mergeConfigList(configs []ConfigWithMetadata) (Config, error) {
 	baseConfig := configs[0]
 
-	for _, config := range configs[1:] {
-		merged, err := MergeConfigs(baseConfig.Config, config.Config)
+	for _, conf := range configs[1:] {
+		merged, err := MergeConfigs(baseConfig.Config, conf.Config)
 		if err != nil {
 			return Config{}, err
 		}
@@ -213,4 +215,12 @@ func unique(intSlice []string) []string {
 		}
 	}
 	return list
+}
+
+func GetWorkingDirectory(conf *config.Configuration, componentType string, component string) string {
+	componentTypeBasePath := conf.Components.Terraform.BasePath
+	if componentType == "helmfile" {
+		componentTypeBasePath = conf.Components.Helmfile.BasePath
+	}
+	return path.Join(conf.BasePath, componentTypeBasePath, component)
 }

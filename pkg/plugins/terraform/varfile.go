@@ -2,24 +2,17 @@ package terraform
 
 import (
 	"fmt"
-	"path"
-	"strings"
-
 	"github.com/neermitt/opsos/pkg/utils"
+	"path"
 )
 
 func GenerateVarFileFile(ectx ExecutionContext, format string) error {
 	// Write varfile to file
-	var varfilePath = path.Join(ectx.WorkingDir, constructVarfileName(ectx, format))
+	var varfilePath = path.Join(ectx.WorkingDir, constructVarfileName(ectx.Stack, ectx.ComponentName))
 
 	fmt.Printf("Writing the vars to file:\n%s\n", varfilePath)
 	if ectx.DryRun {
 		return nil
 	}
 	return utils.PrintOrWriteToFile(format, varfilePath, ectx.ComponentConfig.Vars, 0644)
-}
-
-func constructVarfileName(ectx ExecutionContext, _ string) string {
-	fmtdComponentFolderPrefix := strings.ReplaceAll(ectx.ComponentName, "/", "-")
-	return fmt.Sprintf("%s-%s.terraform.tfvars.json", ectx.Stack.Name, fmtdComponentFolderPrefix)
 }

@@ -2,7 +2,6 @@ package terraform
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/neermitt/opsos/pkg/utils"
@@ -28,48 +27,8 @@ func ConstructWorkspaceName(execCtx ExecutionContext) (string, error) {
 }
 
 func SelectOrCreateWorkspace(execCtx ExecutionContext, workspace string) error {
-	if err := SelectWorkspace(execCtx, workspace); err != nil {
-		return CreateWorkspace(execCtx, workspace)
+	if err := ExecuteCommand(execCtx, []string{"workspace", "select", workspace}); err != nil {
+		return ExecuteCommand(execCtx, []string{"workspace", "new", workspace})
 	}
 	return nil
-}
-
-func SelectWorkspace(execCtx ExecutionContext, workspace string) error {
-
-	args := []string{"workspace"}
-	args = append(args, "select", workspace)
-
-	cmdEnv, err := buildCommandEnvs(execCtx)
-	if err != nil {
-		return err
-	}
-
-	command := getCommand(execCtx)
-
-	return utils.ExecuteShellCommand(execCtx.Context, command, args, utils.ExecOptions{
-		DryRun:           execCtx.DryRun,
-		Env:              cmdEnv,
-		WorkingDirectory: execCtx.WorkingDir,
-		StdOut:           os.Stdout,
-	})
-}
-
-func CreateWorkspace(execCtx ExecutionContext, workspace string) error {
-
-	args := []string{"workspace"}
-	args = append(args, "new", workspace)
-
-	cmdEnv, err := buildCommandEnvs(execCtx)
-	if err != nil {
-		return err
-	}
-
-	command := getCommand(execCtx)
-
-	return utils.ExecuteShellCommand(execCtx.Context, command, args, utils.ExecOptions{
-		DryRun:           execCtx.DryRun,
-		Env:              cmdEnv,
-		WorkingDirectory: execCtx.WorkingDir,
-		StdOut:           os.Stdout,
-	})
 }

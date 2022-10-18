@@ -2,10 +2,10 @@ package exec
 
 import (
 	"context"
-	"fmt"
-	"github.com/neermitt/opsos/pkg/config"
+	"errors"
 	"github.com/neermitt/opsos/pkg/plugins/terraform"
-	"github.com/neermitt/opsos/pkg/stack"
+	"github.com/neermitt/opsos/pkg/utils"
+	"os"
 )
 
 type TerraformOptions struct {
@@ -15,7 +15,7 @@ type TerraformOptions struct {
 }
 
 func ExecuteTerraformInit(ctx context.Context, stackName string, component string, additionalArgs []string, options TerraformOptions) error {
-	exeCtx, err := prepareExecCtx(ctx, stackName, component, additionalArgs)
+	exeCtx, err := terraform.NewExecutionContext(ctx, stackName, component, terraform.WithAdditionalArgs(additionalArgs))
 	if err != nil {
 		return err
 	}
@@ -29,11 +29,19 @@ func ExecuteTerraformInit(ctx context.Context, stackName string, component strin
 			return err
 		}
 	}
-	return terraform.ExecuteInit(exeCtx, terraform.InitOptions{Reconfigure: exeCtx.Config.Components.Terraform.InitRunReconfigure})
+	return terraformInit(exeCtx)
+}
+
+func terraformInit(exeCtx terraform.ExecutionContext) error {
+	args := []string{"init"}
+	if exeCtx.Config.Components.Terraform.InitRunReconfigure {
+		args = append(args, "-reconfigure")
+	}
+	return terraform.ExecuteCommand(exeCtx, args)
 }
 
 func ExecuteTerraformPlan(ctx context.Context, stackName string, component string, additionalArgs []string, options TerraformOptions) error {
-	exeCtx, err := prepareExecCtx(ctx, stackName, component, additionalArgs)
+	exeCtx, err := terraform.NewExecutionContext(ctx, stackName, component, terraform.WithAdditionalArgs(additionalArgs))
 	if err != nil {
 		return err
 	}
@@ -45,7 +53,7 @@ func ExecuteTerraformPlan(ctx context.Context, stackName string, component strin
 			return err
 		}
 	}
-	if err := terraform.ExecuteInit(exeCtx, terraform.InitOptions{Reconfigure: exeCtx.Config.Components.Terraform.InitRunReconfigure}); err != nil {
+	if err := terraformInit(exeCtx); err != nil {
 		return err
 	}
 
@@ -57,11 +65,14 @@ func ExecuteTerraformPlan(ctx context.Context, stackName string, component strin
 		return err
 	}
 
-	return terraform.ExecutePlan(exeCtx)
+	args := []string{"plan"}
+	args = append(args, "-var-file", exeCtx.VarFile, "-out", exeCtx.PlanFile)
+	args = append(args, exeCtx.AdditionalArgs...)
+	return terraform.ExecuteCommand(exeCtx, args)
 }
 
 func ExecuteTerraformApply(ctx context.Context, stackName string, component string, additionalArgs []string, options TerraformOptions) error {
-	exeCtx, err := prepareExecCtx(ctx, stackName, component, additionalArgs)
+	exeCtx, err := terraform.NewExecutionContext(ctx, stackName, component, terraform.WithAdditionalArgs(additionalArgs))
 	if err != nil {
 		return err
 	}
@@ -73,7 +84,7 @@ func ExecuteTerraformApply(ctx context.Context, stackName string, component stri
 			return err
 		}
 	}
-	if err := terraform.ExecuteInit(exeCtx, terraform.InitOptions{Reconfigure: exeCtx.Config.Components.Terraform.InitRunReconfigure}); err != nil {
+	if err := terraformInit(exeCtx); err != nil {
 		return err
 	}
 
@@ -85,7 +96,26 @@ func ExecuteTerraformApply(ctx context.Context, stackName string, component stri
 		return err
 	}
 
-	if err := terraform.ExecuteApply(exeCtx, terraform.ApplyOptions{UsePlan: options.UsePlan, AutoApprove: options.AutoApprove, Destroy: options.Destroy}); err != nil {
+	args := []string{"apply"}
+	if options.UsePlan {
+		args = append(args, exeCtx.PlanFile)
+	} else {
+		args = append(args, "-var-file", exeCtx.PlanFile)
+	}
+
+	if !utils.StringInSlice(terraform.AutoApproveFlag, exeCtx.AdditionalArgs) {
+		if (exeCtx.Config.Components.Terraform.ApplyAutoApprove || options.AutoApprove) && !options.UsePlan {
+			args = append(args, terraform.AutoApproveFlag)
+		} else if os.Stdin == nil {
+			return errors.New("'terraform apply' requires a user interaction, but it's running without `tty` or `stdin` attached.\nUse 'terraform apply -auto-approve' or 'terraform deploy' instead.")
+		}
+	}
+	if options.Destroy {
+		args = append(args, "-destroy")
+	}
+	args = append(args, exeCtx.AdditionalArgs...)
+
+	if err := terraform.ExecuteCommand(exeCtx, args); err != nil {
 		return err
 	}
 
@@ -93,7 +123,7 @@ func ExecuteTerraformApply(ctx context.Context, stackName string, component stri
 }
 
 func ExecuteTerraformImport(ctx context.Context, stackName string, component string, additionalArgs []string, options TerraformOptions) error {
-	exeCtx, err := prepareExecCtx(ctx, stackName, component, additionalArgs)
+	exeCtx, err := terraform.NewExecutionContext(ctx, stackName, component, terraform.WithAdditionalArgs(additionalArgs))
 	if err != nil {
 		return err
 	}
@@ -105,7 +135,7 @@ func ExecuteTerraformImport(ctx context.Context, stackName string, component str
 			return err
 		}
 	}
-	if err := terraform.ExecuteInit(exeCtx, terraform.InitOptions{Reconfigure: exeCtx.Config.Components.Terraform.InitRunReconfigure}); err != nil {
+	if err := terraformInit(exeCtx); err != nil {
 		return err
 	}
 
@@ -117,47 +147,11 @@ func ExecuteTerraformImport(ctx context.Context, stackName string, component str
 		return err
 	}
 
-	if err := terraform.ExecuteImport(exeCtx); err != nil {
+	args := []string{"import", "-var-file", exeCtx.VarFile}
+	args = append(args, exeCtx.AdditionalArgs...)
+	if err := terraform.ExecuteCommand(exeCtx, args); err != nil {
 		return err
 	}
 
 	return terraform.CleanPlanFile(exeCtx)
-}
-
-func prepareExecCtx(ctx context.Context, stackName string, component string, additionalArgs []string) (terraform.ExecutionContext, error) {
-	stk, err := stack.LoadStack(ctx, stack.LoadStackOptions{Stack: stackName, ComponentType: terraformComponentType, ComponentName: component})
-	if err != nil {
-		return terraform.ExecutionContext{}, err
-	}
-
-	terraformComponents, found := stk.Components[terraformComponentType]
-	if !found {
-		return terraform.ExecutionContext{}, fmt.Errorf("no terraform component found")
-	}
-	componentConfig, found := terraformComponents[component]
-	if !found {
-		return terraform.ExecutionContext{}, fmt.Errorf("terraform component %s not found", component)
-	}
-
-	if err != nil {
-		return terraform.ExecutionContext{}, err
-	}
-
-	conf := config.GetConfig(ctx)
-	workingDir, _, err := getComponentWorkingDirectory(conf, terraformComponentType, componentConfig)
-	if err != nil {
-		return terraform.ExecutionContext{}, err
-	}
-
-	exeCtx := terraform.ExecutionContext{
-		Context:         ctx,
-		Config:          conf,
-		Stack:           stk,
-		ComponentName:   component,
-		ComponentConfig: componentConfig,
-		WorkingDir:      workingDir,
-		DryRun:          false,
-		AdditionalArgs:  additionalArgs,
-	}
-	return exeCtx, nil
 }
