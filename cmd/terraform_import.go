@@ -12,11 +12,12 @@ var terraformImportCmd = &cobra.Command{
 	Long:  `This command imports a terraform component: opsos terraform import <stack> <component> ADDR ID`,
 	Args:  cobra.MinimumNArgs(4),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		terraformOptions.Command = "import"
 		terraformOptions.RequiresVarFile = true
 		stackName := args[0]
 		component := args[1]
 		additionalArgs := args[2:]
-		return exec.ExecuteTerraformImport(cmd.Context(), stackName, component, additionalArgs, terraformOptions)
+		return exec.ExecuteTerraform(cmd.Context(), stackName, component, additionalArgs, terraformOptions)
 	},
 }
 

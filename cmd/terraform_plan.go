@@ -16,11 +16,12 @@ var terraformPlanCmd = &cobra.Command{
 	Long:  `This command prepares plan file for a terraform component: opsos terraform plan <stack> <component>`,
 	Args:  cobra.MinimumNArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		terraformOptions.Command = "plan"
 		terraformOptions.RequiresVarFile = true
 		stackName := args[0]
 		component := args[1]
 		additionalArgs := args[2:]
-		return exec.ExecuteTerraformPlan(cmd.Context(), stackName, component, additionalArgs, terraformOptions)
+		return exec.ExecuteTerraform(cmd.Context(), stackName, component, additionalArgs, terraformOptions)
 	},
 }
 

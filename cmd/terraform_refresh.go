@@ -12,12 +12,13 @@ var terraformRefreshCmd = &cobra.Command{
 	Long:  `This command refresh a terraform component: opsos terraform refresh <stack> <component>`,
 	Args:  cobra.MinimumNArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		terraformOptions.Command = "refresh"
 		terraformOptions.RequiresVarFile = true
 		terraformOptions.CleanPlanFileOnCompletion = true
 		stackName := args[0]
 		component := args[1]
 		additionalArgs := args[2:]
-		return exec.ExecuteTerraformRefresh(cmd.Context(), stackName, component, additionalArgs, terraformOptions)
+		return exec.ExecuteTerraform(cmd.Context(), stackName, component, additionalArgs, terraformOptions)
 	},
 }
 
