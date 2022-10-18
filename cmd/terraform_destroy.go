@@ -22,5 +22,6 @@ var terraformDestroyCmd = &cobra.Command{
 }
 
 func init() {
+	terraformDestroyCmd.Flags().BoolVar(&terraformOptions.DryRun, "dry-run", false, "run in dry run mode")
 	terraformCmd.AddCommand(terraformDestroyCmd)
 }

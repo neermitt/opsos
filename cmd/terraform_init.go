@@ -21,5 +21,6 @@ var terraformInitCmd = &cobra.Command{
 }
 
 func init() {
+	terraformInitCmd.Flags().BoolVar(&terraformOptions.DryRun, "dry-run", false, "run in dry run mode")
 	terraformCmd.AddCommand(terraformInitCmd)
 }

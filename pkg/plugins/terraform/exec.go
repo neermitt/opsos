@@ -12,24 +12,26 @@ import (
 )
 
 type ExecutionContext struct {
-	Context         context.Context
-	Config          *config.Configuration
-	Stack           *stack.Stack
-	ComponentName   string
-	ComponentConfig stack.ConfigWithMetadata
-	WorkingDir      string
-	WorkspaceName   string
-	DryRun          bool
-	CmdEnv          []string
-	PlanFile        string
-	VarFile         string
+	Context  context.Context
+	Config   *config.Configuration
+	PlanFile string
+	VarFile  string
+
+	dryRun bool
+
+	stackName       string
+	componentName   string
+	componentConfig stack.ConfigWithMetadata
+	workingDir      string
+	workspaceName   string
+	processedCmdEnv []string
 }
 
 type Option func(execCtx *ExecutionContext)
 
-func WithDryRun() Option {
+func WithDryRun(enable bool) Option {
 	return func(execCtx *ExecutionContext) {
-		execCtx.DryRun = true
+		execCtx.dryRun = enable
 	}
 }
 
@@ -71,15 +73,14 @@ func NewExecutionContext(ctx context.Context, stackName string, component string
 	exeCtx := ExecutionContext{
 		Context:         ctx,
 		Config:          conf,
-		Stack:           stk,
-		ComponentName:   component,
-		ComponentConfig: componentConfig,
-		WorkingDir:      workingDir,
-		WorkspaceName:   workspaceName,
-		DryRun:          false,
+		stackName:       stk.Id,
+		componentName:   component,
+		componentConfig: componentConfig,
+		workingDir:      workingDir,
+		workspaceName:   workspaceName,
 		PlanFile:        planFile,
 		VarFile:         varFile,
-		CmdEnv:          cmdEnv,
+		processedCmdEnv: cmdEnv,
 	}
 	for _, opt := range options {
 		opt(&exeCtx)
@@ -89,8 +90,8 @@ func NewExecutionContext(ctx context.Context, stackName string, component string
 
 func getCommand(exeCtx ExecutionContext) string {
 	command := "terraform"
-	if exeCtx.ComponentConfig.Command != nil {
-		command = *exeCtx.ComponentConfig.Command
+	if exeCtx.componentConfig.Command != nil {
+		command = *exeCtx.componentConfig.Command
 	}
 	return command
 }
@@ -111,9 +112,9 @@ func ExecuteCommand(exeCtx ExecutionContext, args []string) error {
 	command := getCommand(exeCtx)
 
 	return utils.ExecuteShellCommand(exeCtx.Context, command, args, utils.ExecOptions{
-		DryRun:           exeCtx.DryRun,
-		Env:              exeCtx.CmdEnv,
-		WorkingDirectory: exeCtx.WorkingDir,
+		DryRun:           exeCtx.dryRun,
+		Env:              exeCtx.processedCmdEnv,
+		WorkingDirectory: exeCtx.workingDir,
 		StdOut:           os.Stdout,
 	})
 }

@@ -28,8 +28,8 @@ func ConstructWorkspaceName(stack *stack.Stack, componentName string, config sta
 }
 
 func SelectOrCreateWorkspace(execCtx ExecutionContext) error {
-	if err := ExecuteCommand(execCtx, []string{"workspace", "select", execCtx.WorkspaceName}); err != nil {
-		return ExecuteCommand(execCtx, []string{"workspace", "new", execCtx.WorkspaceName})
+	if err := ExecuteCommand(execCtx, []string{"workspace", "select", execCtx.workspaceName}); err != nil {
+		return ExecuteCommand(execCtx, []string{"workspace", "new", execCtx.workspaceName})
 	}
 	return nil
 }

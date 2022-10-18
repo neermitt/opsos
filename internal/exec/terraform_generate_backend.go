@@ -13,11 +13,7 @@ type TerraformGenerateBackendOptions struct {
 
 // ExecuteTerraformGenerateBackend executes `terraform generate backend` command
 func ExecuteTerraformGenerateBackend(ctx context.Context, stackName string, component string, options TerraformGenerateBackendOptions) error {
-	var opts []terraform.Option
-	if options.DryRun {
-		opts = append(opts, terraform.WithDryRun())
-	}
-	exeCtx, err := terraform.NewExecutionContext(ctx, stackName, component, opts...)
+	exeCtx, err := terraform.NewExecutionContext(ctx, stackName, component, terraform.WithDryRun(options.DryRun))
 	if err != nil {
 		return err
 	}

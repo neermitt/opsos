@@ -13,11 +13,7 @@ type TerraformGenerateVarfileOptions struct {
 
 // ExecuteTerraformGenerateVarfile executes `terraform generate varfile` command
 func ExecuteTerraformGenerateVarfile(ctx context.Context, stackName string, component string, options TerraformGenerateVarfileOptions) error {
-	var opts []terraform.Option
-	if options.DryRun {
-		opts = append(opts, terraform.WithDryRun())
-	}
-	exeCtx, err := terraform.NewExecutionContext(ctx, stackName, component, opts...)
+	exeCtx, err := terraform.NewExecutionContext(ctx, stackName, component, terraform.WithDryRun(options.DryRun))
 	if err != nil {
 		return err
 	}

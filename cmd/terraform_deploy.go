@@ -21,6 +21,7 @@ var terraformDeployCmd = &cobra.Command{
 }
 
 func init() {
+	terraformDeployCmd.Flags().BoolVar(&terraformOptions.DryRun, "dry-run", false, "run in dry run mode")
 	terraformDeployCmd.Flags().BoolVar(&terraformOptions.UsePlan, "use-plan", false, "use existing plan file")
 	terraformCmd.AddCommand(terraformDeployCmd)
 }
