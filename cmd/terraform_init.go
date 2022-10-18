@@ -14,6 +14,7 @@ var terraformInitCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		terraformOptions.Command = "init"
 		terraformOptions.SkipInit = true
+		terraformOptions.SkipWorkspace = true
 		stackName := args[0]
 		component := args[1]
 		additionalArgs := args[2:]

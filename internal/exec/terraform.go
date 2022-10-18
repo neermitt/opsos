@@ -18,6 +18,7 @@ type TerraformOptions struct {
 	AutoApprove               bool
 	Destroy                   bool
 	SkipInit                  bool
+	SkipWorkspace             bool
 	CleanPlanFileOnCompletion bool
 }
 
@@ -48,6 +49,8 @@ func ExecuteTerraform(ctx context.Context, stackName string, component string, a
 		if err := terraform.ExecuteCommand(exeCtx, initArgs); err != nil {
 			return err
 		}
+	}
+	if !options.SkipWorkspace {
 		if err := terraform.SelectOrCreateWorkspace(exeCtx); err != nil {
 			return err
 		}
