@@ -13,6 +13,7 @@ var terraformDestroyCmd = &cobra.Command{
 	Args:  cobra.MinimumNArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		terraformOptions.Destroy = true
+		terraformOptions.CleanPlanFileOnCompletion = true
 		stackName := args[0]
 		component := args[1]
 		additionalArgs := args[2:]

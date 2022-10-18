@@ -12,6 +12,7 @@ var terraformInitCmd = &cobra.Command{
 	Long:  `This command inits a terraform component: opsos terraform init <stack> <component>`,
 	Args:  cobra.MinimumNArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		terraformOptions.SkipInit = true
 		stackName := args[0]
 		component := args[1]
 		additionalArgs := args[2:]

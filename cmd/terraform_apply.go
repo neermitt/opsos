@@ -7,17 +7,12 @@ import (
 
 // terraformApplyCmd applies the terraform component
 var terraformApplyCmd = &cobra.Command{
-	Use:     "apply <stack> <component>",
-	Aliases: []string{"deploy"},
-	Short:   "Execute 'terraform apply' commands",
-	Long:    `This command apply a terraform component: opsos terraform apply <stack> <component>`,
-	Args:    cobra.MinimumNArgs(2),
-	PreRun: func(cmd *cobra.Command, args []string) {
-		if cmd.CalledAs() == "deploy" {
-			terraformOptions.AutoApprove = true
-		}
-	},
+	Use:   "apply <stack> <component>",
+	Short: "Execute 'terraform apply' commands",
+	Long:  `This command apply a terraform component: opsos terraform apply <stack> <component>`,
+	Args:  cobra.MinimumNArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		terraformOptions.CleanPlanFileOnCompletion = true
 		stackName := args[0]
 		component := args[1]
 		additionalArgs := args[2:]

@@ -4,31 +4,32 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/neermitt/opsos/pkg/stack"
 	"github.com/neermitt/opsos/pkg/utils"
 )
 
-func ConstructWorkspaceName(execCtx ExecutionContext) (string, error) {
+func ConstructWorkspaceName(stack *stack.Stack, componentName string, config stack.ConfigWithMetadata) (string, error) {
 	var workspace string
 
-	if execCtx.ComponentConfig.Metadata != nil && execCtx.ComponentConfig.Metadata.TerraformWorkspacePattern != nil {
+	if config.Metadata != nil && config.Metadata.TerraformWorkspacePattern != nil {
 		var err error
-		workspace, err = utils.ProcessTemplate(*execCtx.ComponentConfig.Metadata.TerraformWorkspacePattern, execCtx.ComponentConfig.Vars)
+		workspace, err = utils.ProcessTemplate(*config.Metadata.TerraformWorkspacePattern, config.Vars)
 		if err != nil {
 			return "", err
 		}
-	} else if execCtx.ComponentConfig.Metadata != nil && execCtx.ComponentConfig.Metadata.TerraformWorkspace != nil {
+	} else if config.Metadata != nil && config.Metadata.TerraformWorkspace != nil {
 		// Terraform workspace can be overridden per component in YAML config `metadata.terraform_workspace`
-		workspace = *execCtx.ComponentConfig.Metadata.TerraformWorkspace
+		workspace = *config.Metadata.TerraformWorkspace
 	} else {
-		workspace = fmt.Sprintf("%s-%s", execCtx.Stack.Name, execCtx.ComponentName)
+		workspace = fmt.Sprintf("%s-%s", stack.Name, componentName)
 	}
 
 	return strings.Replace(workspace, "/", "-", -1), nil
 }
 
-func SelectOrCreateWorkspace(execCtx ExecutionContext, workspace string) error {
-	if err := ExecuteCommand(execCtx, []string{"workspace", "select", workspace}); err != nil {
-		return ExecuteCommand(execCtx, []string{"workspace", "new", workspace})
+func SelectOrCreateWorkspace(execCtx ExecutionContext) error {
+	if err := ExecuteCommand(execCtx, []string{"workspace", "select", execCtx.WorkspaceName}); err != nil {
+		return ExecuteCommand(execCtx, []string{"workspace", "new", execCtx.WorkspaceName})
 	}
 	return nil
 }

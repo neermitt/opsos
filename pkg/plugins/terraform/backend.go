@@ -49,19 +49,11 @@ func GenerateBackendFile(ectx ExecutionContext, format string) error {
 		}}
 
 	// Write backend config to file
-	var backendFilePath = path.Join(ectx.WorkingDir, constructBackendFileName(ectx, format))
+	var backendFilePath = path.Join(ectx.WorkingDir, constructBackendFileName(format))
 
 	fmt.Printf("Writing the backend config to file:\n%s\n", backendFilePath)
 	if ectx.DryRun {
 		return nil
 	}
 	return utils.PrintOrWriteToFile(format, backendFilePath, componentBackendConfig, 0644)
-}
-
-// constructBackendFileName constructs the backend path for a terraform component in a stack
-func constructBackendFileName(_ ExecutionContext, format string) string {
-	if format == "json" {
-		return "backend.tf.json"
-	}
-	return "backend.tf"
 }

@@ -18,20 +18,15 @@ type ExecutionContext struct {
 	ComponentName   string
 	ComponentConfig stack.ConfigWithMetadata
 	WorkingDir      string
+	WorkspaceName   string
 	DryRun          bool
-	AdditionalArgs  []string
+	CmdEnv          []string
 	PlanFile        string
 	VarFile         string
-	CmdEnv          []string
 }
 
 type Option func(execCtx *ExecutionContext)
 
-func WithAdditionalArgs(args []string) Option {
-	return func(execCtx *ExecutionContext) {
-		execCtx.AdditionalArgs = args
-	}
-}
 func WithDryRun() Option {
 	return func(execCtx *ExecutionContext) {
 		execCtx.DryRun = true
@@ -65,6 +60,11 @@ func NewExecutionContext(ctx context.Context, stackName string, component string
 		return ExecutionContext{}, err
 	}
 
+	workspaceName, err := ConstructWorkspaceName(stk, component, componentConfig)
+	if err != nil {
+		return ExecutionContext{}, err
+	}
+
 	planFile := constructPlanfileName(stk, component)
 	varFile := constructVarfileName(stk, component)
 
@@ -75,6 +75,7 @@ func NewExecutionContext(ctx context.Context, stackName string, component string
 		ComponentName:   component,
 		ComponentConfig: componentConfig,
 		WorkingDir:      workingDir,
+		WorkspaceName:   workspaceName,
 		DryRun:          false,
 		PlanFile:        planFile,
 		VarFile:         varFile,
