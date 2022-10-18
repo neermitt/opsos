@@ -2,6 +2,7 @@ package terraform
 
 import (
 	"fmt"
+	"github.com/neermitt/opsos/pkg/config"
 	"os"
 
 	"github.com/spf13/afero"
@@ -28,8 +29,9 @@ func Clean(ectx ExecutionContext, clearDataDir bool) error {
 		return err
 	}
 
+	conf := config.GetConfig(ectx.Context)
 	// If `auto_generate_backend_file` is `true` (we are auto-generating backend files), remove `backend.tf.json`
-	if ectx.Config.Components.Terraform.AutoGenerateBackendFile {
+	if conf.Components.Terraform.AutoGenerateBackendFile {
 		fmt.Println("Deleting 'backend.tf*' file")
 		if err := removeAllFiles(fs, "backend.tf*"); err != nil {
 			return err

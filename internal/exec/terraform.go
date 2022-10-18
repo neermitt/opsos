@@ -3,6 +3,7 @@ package exec
 import (
 	"context"
 	"errors"
+	"github.com/neermitt/opsos/pkg/config"
 	"os"
 
 	"github.com/neermitt/opsos/pkg/plugins/terraform"
@@ -19,9 +20,10 @@ type TerraformOptions struct {
 }
 
 func ExecuteTerraformInit(ctx context.Context, stackName string, component string, additionalArgs []string, options TerraformOptions) error {
+	conf := config.GetConfig(ctx)
 	return executeTerraform(ctx, stackName, component, additionalArgs, options,
 		func(exeCtx terraform.ExecutionContext, additionalArgs []string, options TerraformOptions) ([]string, error) {
-			return prepareInitCommandArgs(exeCtx, additionalArgs), nil
+			return prepareInitCommandArgs(conf, additionalArgs), nil
 		},
 	)
 }
@@ -37,6 +39,7 @@ func ExecuteTerraformPlan(ctx context.Context, stackName string, component strin
 }
 
 func ExecuteTerraformApply(ctx context.Context, stackName string, component string, additionalArgs []string, options TerraformOptions) error {
+	conf := config.GetConfig(ctx)
 	return executeTerraform(ctx, stackName, component, additionalArgs, options,
 		func(exeCtx terraform.ExecutionContext, additionalArgs []string, options TerraformOptions) ([]string, error) {
 			args := []string{"apply"}
@@ -47,7 +50,7 @@ func ExecuteTerraformApply(ctx context.Context, stackName string, component stri
 			}
 
 			if !utils.StringInSlice(terraform.AutoApproveFlag, additionalArgs) {
-				if (exeCtx.Config.Components.Terraform.ApplyAutoApprove || options.AutoApprove) && !options.UsePlan {
+				if (conf.Components.Terraform.ApplyAutoApprove || options.AutoApprove) && !options.UsePlan {
 					args = append(args, terraform.AutoApproveFlag)
 				} else if os.Stdin == nil {
 					return nil, errors.New("'terraform apply' requires a user interaction, but it's running without `tty` or `stdin` attached.\nUse 'terraform apply -auto-approve' or 'terraform deploy' instead.")
@@ -82,13 +85,16 @@ func executeTerraform(ctx context.Context, stackName string, component string, a
 	if err := terraform.GenerateVarFileFile(exeCtx, "json"); err != nil {
 		return err
 	}
-	if exeCtx.Config.Components.Terraform.AutoGenerateBackendFile {
+
+	conf := config.GetConfig(ctx)
+	if conf.Components.Terraform.AutoGenerateBackendFile {
 		if err := terraform.GenerateBackendFile(exeCtx, "json"); err != nil {
 			return err
 		}
 	}
+
 	if !options.SkipInit {
-		initArgs := prepareInitCommandArgs(exeCtx, nil)
+		initArgs := prepareInitCommandArgs(conf, nil)
 		if err := terraform.ExecuteCommand(exeCtx, initArgs); err != nil {
 			return err
 		}
@@ -111,9 +117,9 @@ func executeTerraform(ctx context.Context, stackName string, component string, a
 	return nil
 }
 
-func prepareInitCommandArgs(exeCtx terraform.ExecutionContext, additionalArgs []string) []string {
+func prepareInitCommandArgs(conf *config.Configuration, additionalArgs []string) []string {
 	args := []string{"init"}
-	if exeCtx.Config.Components.Terraform.InitRunReconfigure {
+	if conf.Components.Terraform.InitRunReconfigure {
 		args = append(args, "-reconfigure")
 	}
 	args = append(args, additionalArgs...)

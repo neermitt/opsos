@@ -13,14 +13,13 @@ import (
 
 type ExecutionContext struct {
 	Context  context.Context
-	Config   *config.Configuration
 	PlanFile string
 	VarFile  string
 
 	stackName       string
 	componentName   string
-	componentConfig stack.ConfigWithMetadata
 	workspaceName   string
+	componentConfig stack.ConfigWithMetadata
 
 	execOptions utils.ExecOptions
 }
@@ -62,7 +61,6 @@ func NewExecutionContext(ctx context.Context, stackName string, component string
 
 	exeCtx := ExecutionContext{
 		Context:         ctx,
-		Config:          conf,
 		stackName:       stk.Id,
 		componentName:   component,
 		componentConfig: componentConfig,
