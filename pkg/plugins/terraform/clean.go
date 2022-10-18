@@ -8,7 +8,7 @@ import (
 )
 
 func Clean(ectx ExecutionContext, clearDataDir bool) error {
-	fs := afero.NewBasePathFs(afero.NewOsFs(), ectx.workingDir)
+	fs := afero.NewBasePathFs(afero.NewOsFs(), ectx.execOptions.WorkingDirectory)
 	fmt.Println("Deleting '.terraform' folder")
 	if err := fs.RemoveAll(".terraform"); err != nil {
 		return err
@@ -51,7 +51,7 @@ func Clean(ectx ExecutionContext, clearDataDir bool) error {
 }
 
 func CleanPlanFile(exeCtx ExecutionContext) error {
-	fs := afero.NewBasePathFs(afero.NewOsFs(), exeCtx.workingDir)
+	fs := afero.NewBasePathFs(afero.NewOsFs(), exeCtx.execOptions.WorkingDirectory)
 	fmt.Printf("Deleting terraform plan: %s\n", "*.planfile")
 	return removeAllFiles(fs, "*.planfile")
 }

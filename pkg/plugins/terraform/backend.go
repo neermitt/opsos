@@ -49,10 +49,10 @@ func GenerateBackendFile(ectx ExecutionContext, format string) error {
 		}}
 
 	// Write backend config to file
-	var backendFilePath = path.Join(ectx.workingDir, constructBackendFileName(format))
+	var backendFilePath = path.Join(ectx.execOptions.WorkingDirectory, constructBackendFileName(format))
 
 	fmt.Printf("Writing the backend config to file:\n%s\n", backendFilePath)
-	if ectx.dryRun {
+	if ectx.execOptions.DryRun {
 		return nil
 	}
 	return utils.PrintOrWriteToFile(format, backendFilePath, componentBackendConfig, 0644)

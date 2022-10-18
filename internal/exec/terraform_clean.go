@@ -12,7 +12,7 @@ type TerraformCleanOptions struct {
 
 // ExecuteTerraformClean executes `terraform clean` command
 func ExecuteTerraformClean(ctx context.Context, stackName string, component string, options TerraformCleanOptions) error {
-	exeCtx, err := terraform.NewExecutionContext(ctx, stackName, component)
+	exeCtx, err := terraform.NewExecutionContext(ctx, stackName, component, false)
 	if err != nil {
 		return err
 	}

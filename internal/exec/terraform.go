@@ -75,7 +75,7 @@ func ExecuteTerraformImport(ctx context.Context, stackName string, component str
 type prepareCommandArgs func(exeCtx terraform.ExecutionContext, additionalArgs []string, options TerraformOptions) ([]string, error)
 
 func executeTerraform(ctx context.Context, stackName string, component string, additionalArgs []string, options TerraformOptions, prepArgs prepareCommandArgs) error {
-	exeCtx, err := terraform.NewExecutionContext(ctx, stackName, component, terraform.WithDryRun(options.DryRun))
+	exeCtx, err := terraform.NewExecutionContext(ctx, stackName, component, options.DryRun)
 	if err != nil {
 		return err
 	}

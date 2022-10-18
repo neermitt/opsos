@@ -17,25 +17,15 @@ type ExecutionContext struct {
 	PlanFile string
 	VarFile  string
 
-	dryRun bool
-
 	stackName       string
 	componentName   string
 	componentConfig stack.ConfigWithMetadata
-	workingDir      string
 	workspaceName   string
-	processedCmdEnv []string
+
+	execOptions utils.ExecOptions
 }
 
-type Option func(execCtx *ExecutionContext)
-
-func WithDryRun(enable bool) Option {
-	return func(execCtx *ExecutionContext) {
-		execCtx.dryRun = enable
-	}
-}
-
-func NewExecutionContext(ctx context.Context, stackName string, component string, options ...Option) (ExecutionContext, error) {
+func NewExecutionContext(ctx context.Context, stackName string, component string, dryRun bool) (ExecutionContext, error) {
 	stk, err := stack.LoadStack(ctx, stack.LoadStackOptions{Stack: stackName, ComponentType: ComponentType, ComponentName: component})
 	if err != nil {
 		return ExecutionContext{}, err
@@ -76,14 +66,15 @@ func NewExecutionContext(ctx context.Context, stackName string, component string
 		stackName:       stk.Id,
 		componentName:   component,
 		componentConfig: componentConfig,
-		workingDir:      workingDir,
 		workspaceName:   workspaceName,
 		PlanFile:        planFile,
 		VarFile:         varFile,
-		processedCmdEnv: cmdEnv,
-	}
-	for _, opt := range options {
-		opt(&exeCtx)
+		execOptions: utils.ExecOptions{
+			Env:              cmdEnv,
+			WorkingDirectory: workingDir,
+			StdOut:           os.Stdout,
+			DryRun:           dryRun,
+		},
 	}
 	return exeCtx, nil
 }
@@ -111,10 +102,5 @@ func buildCommandEnvs(config stack.ConfigWithMetadata) ([]string, error) {
 func ExecuteCommand(exeCtx ExecutionContext, args []string) error {
 	command := getCommand(exeCtx)
 
-	return utils.ExecuteShellCommand(exeCtx.Context, command, args, utils.ExecOptions{
-		DryRun:           exeCtx.dryRun,
-		Env:              exeCtx.processedCmdEnv,
-		WorkingDirectory: exeCtx.workingDir,
-		StdOut:           os.Stdout,
-	})
+	return utils.ExecuteShellCommand(exeCtx.Context, command, args, exeCtx.execOptions)
 }
