@@ -34,7 +34,7 @@ func GenerateBackendFile(ectx ExecutionContext, format string) error {
 	}
 
 	fmt.Print("Component backend config:\n\n")
-	err := utils.Get("json")(os.Stdout, ectx.ComponentConfig.Backend)
+	err := utils.GetFormatter("json")(os.Stdout, ectx.ComponentConfig.Backend)
 	if err != nil {
 		return err
 	}

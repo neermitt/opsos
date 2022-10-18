@@ -12,7 +12,7 @@ func GenerateVarFileFile(ectx ExecutionContext, format string) error {
 	// Write varfile to file
 	var varfilePath = path.Join(ectx.WorkingDir, constructVarfileName(ectx, format))
 
-	fmt.Printf("Writing the backend config to file:\n%s\n", varfilePath)
+	fmt.Printf("Writing the vars to file:\n%s\n", varfilePath)
 	if ectx.DryRun {
 		return nil
 	}

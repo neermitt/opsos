@@ -25,5 +25,5 @@ func PrintOrWriteToFile(format string, filePath string, data any, fileMode os.Fi
 		w = f
 	}
 
-	return Get(format)(w, data)
+	return GetFormatter(format)(w, data)
 }

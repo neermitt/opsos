@@ -16,7 +16,7 @@ type DescribeConfigOptions struct {
 func ExecuteDescribeConfig(cmd *cobra.Command, options DescribeConfigOptions) error {
 	conf := config.GetConfig(cmd.Context())
 
-	err := utils.Get(options.Format)(os.Stdout, conf)
+	err := utils.GetFormatter(options.Format)(os.Stdout, conf)
 	if err != nil {
 		return err
 	}

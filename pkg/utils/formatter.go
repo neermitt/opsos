@@ -7,7 +7,7 @@ import (
 
 type Formatter func(w io.Writer, any interface{}) error
 
-func Get(format string) Formatter {
+func GetFormatter(format string) Formatter {
 	switch format {
 	case "json":
 		return jsonFormatter

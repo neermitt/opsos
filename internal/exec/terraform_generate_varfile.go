@@ -33,7 +33,7 @@ func ExecuteTerraformGenerateVarfile(ctx context.Context, stackName string, comp
 	}
 
 	fmt.Print("Component backend config:\\n\\n")
-	err = utils.Get("json")(os.Stdout, componentConfig.Vars)
+	err = utils.GetFormatter("json")(os.Stdout, componentConfig.Vars)
 	if err != nil {
 		return err
 	}

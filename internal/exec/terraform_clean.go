@@ -32,7 +32,7 @@ func ExecuteTerraformClean(ctx context.Context, stackName string, component stri
 	}
 
 	fmt.Print("Component backend config:\\n\\n")
-	err = utils.Get("json")(os.Stdout, componentConfig.Vars)
+	err = utils.GetFormatter("json")(os.Stdout, componentConfig.Vars)
 	if err != nil {
 		return err
 	}

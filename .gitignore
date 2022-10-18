@@ -33,3 +33,6 @@ bin/
 **/*.vars.yaml
 **/backend.tf*
 **/*.terraform.tfvars*
+**/*.planfile
+.terraform/
+terraform.tfstate.d/
