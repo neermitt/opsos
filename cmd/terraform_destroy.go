@@ -12,6 +12,7 @@ var terraformDestroyCmd = &cobra.Command{
 	Long:  `This command destroys a terraform component with auto approve: opsos terraform destroy <stack> <component>`,
 	Args:  cobra.MinimumNArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		terraformOptions.RequiresVarFile = true
 		terraformOptions.Destroy = true
 		terraformOptions.CleanPlanFileOnCompletion = true
 		stackName := args[0]

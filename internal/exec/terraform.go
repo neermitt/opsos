@@ -3,14 +3,15 @@ package exec
 import (
 	"context"
 	"errors"
-	"github.com/neermitt/opsos/pkg/config"
 	"os"
 
+	"github.com/neermitt/opsos/pkg/config"
 	"github.com/neermitt/opsos/pkg/plugins/terraform"
 	"github.com/neermitt/opsos/pkg/utils"
 )
 
 type TerraformOptions struct {
+	RequiresVarFile           bool
 	UsePlan                   bool
 	DryRun                    bool
 	AutoApprove               bool
@@ -20,10 +21,9 @@ type TerraformOptions struct {
 }
 
 func ExecuteTerraformInit(ctx context.Context, stackName string, component string, additionalArgs []string, options TerraformOptions) error {
-	conf := config.GetConfig(ctx)
 	return executeTerraform(ctx, stackName, component, additionalArgs, options,
 		func(exeCtx terraform.ExecutionContext, additionalArgs []string, options TerraformOptions) ([]string, error) {
-			return prepareInitCommandArgs(conf, additionalArgs), nil
+			return prepareArgs(exeCtx, "init", additionalArgs, options)
 		},
 	)
 }
@@ -31,9 +31,7 @@ func ExecuteTerraformInit(ctx context.Context, stackName string, component strin
 func ExecuteTerraformPlan(ctx context.Context, stackName string, component string, additionalArgs []string, options TerraformOptions) error {
 	return executeTerraform(ctx, stackName, component, additionalArgs, options,
 		func(exeCtx terraform.ExecutionContext, additionalArgs []string, options TerraformOptions) ([]string, error) {
-			args := []string{"plan", "-var-file", exeCtx.VarFile, "-out", exeCtx.PlanFile}
-			args = append(args, additionalArgs...)
-			return args, nil
+			return prepareArgs(exeCtx, "plan", additionalArgs, options)
 		},
 	)
 }
@@ -68,9 +66,15 @@ func ExecuteTerraformApply(ctx context.Context, stackName string, component stri
 func ExecuteTerraformImport(ctx context.Context, stackName string, component string, additionalArgs []string, options TerraformOptions) error {
 	return executeTerraform(ctx, stackName, component, additionalArgs, options,
 		func(exeCtx terraform.ExecutionContext, additionalArgs []string, options TerraformOptions) ([]string, error) {
-			args := []string{"import", "-var-file", exeCtx.VarFile}
-			args = append(args, additionalArgs...)
-			return args, nil
+			return prepareArgs(exeCtx, "import", additionalArgs, options)
+		},
+	)
+}
+
+func ExecuteTerraformRefresh(ctx context.Context, stackName string, component string, additionalArgs []string, options TerraformOptions) error {
+	return executeTerraform(ctx, stackName, component, additionalArgs, options,
+		func(exeCtx terraform.ExecutionContext, additionalArgs []string, options TerraformOptions) ([]string, error) {
+			return prepareArgs(exeCtx, "refresh", additionalArgs, options)
 		},
 	)
 }
@@ -94,7 +98,10 @@ func executeTerraform(ctx context.Context, stackName string, component string, a
 	}
 
 	if !options.SkipInit {
-		initArgs := prepareInitCommandArgs(conf, nil)
+		initArgs, err := prepareArgs(exeCtx, "init", nil, TerraformOptions{})
+		if err != nil {
+			return err
+		}
 		if err := terraform.ExecuteCommand(exeCtx, initArgs); err != nil {
 			return err
 		}
@@ -117,11 +124,20 @@ func executeTerraform(ctx context.Context, stackName string, component string, a
 	return nil
 }
 
-func prepareInitCommandArgs(conf *config.Configuration, additionalArgs []string) []string {
-	args := []string{"init"}
-	if conf.Components.Terraform.InitRunReconfigure {
-		args = append(args, "-reconfigure")
+func prepareArgs(exeCtx terraform.ExecutionContext, command string, additionalArgs []string, options TerraformOptions) ([]string, error) {
+	conf := config.GetConfig(exeCtx.Context)
+	args := []string{command}
+	if options.RequiresVarFile {
+		args = append(args, "-var-file", exeCtx.VarFile)
+	}
+	switch command {
+	case "plan":
+		args = append(args, "-out", exeCtx.PlanFile)
+	case "init":
+		if conf.Components.Terraform.InitRunReconfigure {
+			args = append(args, "-reconfigure")
+		}
 	}
 	args = append(args, additionalArgs...)
-	return args
+	return args, nil
 }
