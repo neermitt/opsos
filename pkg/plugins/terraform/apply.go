@@ -12,6 +12,7 @@ const autoApproveFlag = "-auto-approve"
 type ApplyOptions struct {
 	UsePlan     bool
 	AutoApprove bool
+	Destroy     bool
 }
 
 func ExecuteApply(exeCtx ExecutionContext, options ApplyOptions) error {
@@ -30,6 +31,9 @@ func ExecuteApply(exeCtx ExecutionContext, options ApplyOptions) error {
 		} else if os.Stdin == nil {
 			return errors.New("'terraform apply' requires a user interaction, but it's running without `tty` or `stdin` attached.\nUse 'terraform apply -auto-approve' or 'terraform deploy' instead.")
 		}
+	}
+	if options.Destroy {
+		args = append(args, "-destroy")
 	}
 
 	args = append(args, exeCtx.AdditionalArgs...)

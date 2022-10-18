@@ -11,6 +11,7 @@ import (
 type TerraformOptions struct {
 	UsePlan     bool
 	AutoApprove bool
+	Destroy     bool
 }
 
 func ExecuteTerraformInit(ctx context.Context, stackName string, component string, additionalArgs []string, options TerraformOptions) error {
@@ -84,7 +85,39 @@ func ExecuteTerraformApply(ctx context.Context, stackName string, component stri
 		return err
 	}
 
-	if err := terraform.ExecuteApply(exeCtx, terraform.ApplyOptions{UsePlan: options.UsePlan, AutoApprove: options.AutoApprove}); err != nil {
+	if err := terraform.ExecuteApply(exeCtx, terraform.ApplyOptions{UsePlan: options.UsePlan, AutoApprove: options.AutoApprove, Destroy: options.Destroy}); err != nil {
+		return err
+	}
+
+	return terraform.CleanPlanFile(exeCtx)
+}
+
+func ExecuteTerraformImport(ctx context.Context, stackName string, component string, additionalArgs []string, options TerraformOptions) error {
+	exeCtx, err := prepareExecCtx(ctx, stackName, component, additionalArgs)
+	if err != nil {
+		return err
+	}
+	if err := terraform.GenerateVarFileFile(exeCtx, "json"); err != nil {
+		return err
+	}
+	if exeCtx.Config.Components.Terraform.AutoGenerateBackendFile {
+		if err := terraform.GenerateBackendFile(exeCtx, "json"); err != nil {
+			return err
+		}
+	}
+	if err := terraform.ExecuteInit(exeCtx, terraform.InitOptions{Reconfigure: exeCtx.Config.Components.Terraform.InitRunReconfigure}); err != nil {
+		return err
+	}
+
+	workspace, err := terraform.ConstructWorkspaceName(exeCtx)
+	if err != nil {
+		return err
+	}
+	if err := terraform.SelectOrCreateWorkspace(exeCtx, workspace); err != nil {
+		return err
+	}
+
+	if err := terraform.ExecuteImport(exeCtx); err != nil {
 		return err
 	}
 
