@@ -25,16 +25,16 @@ type Backend struct {
 
 func GenerateBackendFile(ectx ExecutionContext, format string) error {
 
-	if ectx.ComponentConfig.BackendType == nil || *ectx.ComponentConfig.BackendType == "" {
-		return fmt.Errorf("'backend_type' is missing for the '%[2]s' component in stack %[1]s", ectx.Stack.Id, ectx.ComponentName)
+	if ectx.componentConfig.BackendType == nil || *ectx.componentConfig.BackendType == "" {
+		return fmt.Errorf("'backend_type' is missing for the '%[2]s' component in stack %[1]s", ectx.stackName, ectx.componentName)
 	}
 
-	if ectx.ComponentConfig.Backend == nil {
-		return fmt.Errorf("could not find 'backend' config for the '%[2]s' component in stack %[1]s", ectx.Stack.Id, ectx.ComponentName)
+	if ectx.componentConfig.Backend == nil {
+		return fmt.Errorf("could not find 'backend' config for the '%[2]s' component in stack %[1]s", ectx.stackName, ectx.componentName)
 	}
 
 	fmt.Print("Component backend config:\n\n")
-	err := utils.Get("json")(os.Stdout, ectx.ComponentConfig.Backend)
+	err := utils.GetFormatter("json")(os.Stdout, ectx.componentConfig.Backend)
 	if err != nil {
 		return err
 	}
@@ -42,26 +42,18 @@ func GenerateBackendFile(ectx ExecutionContext, format string) error {
 	componentBackendConfig := Root{
 		Terraform{
 			Backend: Backend{
-				Type: *ectx.ComponentConfig.BackendType,
-				Data: ectx.ComponentConfig.Backend,
+				Type: *ectx.componentConfig.BackendType,
+				Data: ectx.componentConfig.Backend,
 			},
-			JSONBackend: map[string]map[string]any{*ectx.ComponentConfig.BackendType: ectx.ComponentConfig.Backend},
+			JSONBackend: map[string]map[string]any{*ectx.componentConfig.BackendType: ectx.componentConfig.Backend},
 		}}
 
 	// Write backend config to file
-	var backendFilePath = path.Join(ectx.WorkingDir, constructBackendFileName(ectx, format))
+	var backendFilePath = path.Join(ectx.execOptions.WorkingDirectory, constructBackendFileName(format))
 
 	fmt.Printf("Writing the backend config to file:\n%s\n", backendFilePath)
-	if ectx.DryRun {
+	if ectx.execOptions.DryRun {
 		return nil
 	}
 	return utils.PrintOrWriteToFile(format, backendFilePath, componentBackendConfig, 0644)
-}
-
-// constructBackendFileName constructs the backend path for a terraform component in a stack
-func constructBackendFileName(_ ExecutionContext, format string) string {
-	if format == "json" {
-		return "backend.tf.json"
-	}
-	return "backend.tf"
 }
