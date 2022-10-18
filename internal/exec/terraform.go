@@ -26,8 +26,11 @@ func ExecuteTerraform(ctx context.Context, stackName string, component string, a
 	if err != nil {
 		return err
 	}
-	if err := terraform.GenerateVarFileFile(exeCtx, "json"); err != nil {
-		return err
+
+	if options.RequiresVarFile {
+		if err := terraform.GenerateVarFileFile(exeCtx, "json"); err != nil {
+			return err
+		}
 	}
 
 	conf := config.GetConfig(ctx)
@@ -55,6 +58,9 @@ func ExecuteTerraform(ctx context.Context, stackName string, component string, a
 		return err
 	}
 
+	if options.Command == "shell" {
+		return terraform.ExecuteShell(exeCtx)
+	}
 	if err := terraform.ExecuteCommand(exeCtx, args); err != nil {
 		return err
 	}

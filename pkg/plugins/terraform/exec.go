@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
+	"runtime"
 
 	"github.com/neermitt/opsos/pkg/components"
 	"github.com/neermitt/opsos/pkg/config"
@@ -101,4 +103,35 @@ func ExecuteCommand(exeCtx ExecutionContext, args []string) error {
 	command := getCommand(exeCtx)
 
 	return utils.ExecuteShellCommand(exeCtx.Context, command, args, exeCtx.execOptions)
+}
+
+func ExecuteShell(exeCtx ExecutionContext) error {
+	execOptions := exeCtx.execOptions
+	execOptions.Env = append(execOptions.Env,
+		fmt.Sprintf("TF_CLI_ARGS_plan=-var-file=%s", exeCtx.VarFile),
+		fmt.Sprintf("TF_CLI_ARGS_apply=-var-file=%s", exeCtx.VarFile),
+		fmt.Sprintf("TF_CLI_ARGS_refresh=-var-file=%s", exeCtx.VarFile),
+		fmt.Sprintf("TF_CLI_ARGS_import=-var-file=%s", exeCtx.VarFile),
+		fmt.Sprintf("TF_CLI_ARGS_destroy=-var-file=%s", exeCtx.VarFile),
+		fmt.Sprintf("TF_CLI_ARGS_console=-var-file=%s", exeCtx.VarFile),
+	)
+
+	var shellCommand string
+	var args []string
+	if runtime.GOOS == "windows" {
+		shellCommand = "cmd.exe"
+	} else {
+		// If 'SHELL' ENV var is not defined, use 'bash' shell
+		shellCommand = os.Getenv("SHELL")
+		if len(shellCommand) == 0 {
+			bashPath, err := exec.LookPath("bash")
+			if err != nil {
+				return err
+			}
+			shellCommand = bashPath
+		}
+		args = append(args, "-l")
+	}
+
+	return utils.ExecuteShellCommand(exeCtx.Context, shellCommand, args, execOptions)
 }
