@@ -12,7 +12,6 @@ import (
 
 	"github.com/goburrow/cache"
 	"github.com/mitchellh/mapstructure"
-	"github.com/neermitt/opsos/pkg/components"
 	"github.com/neermitt/opsos/pkg/config"
 	"github.com/neermitt/opsos/pkg/merge"
 	"github.com/neermitt/opsos/pkg/stack/schema"
@@ -30,16 +29,16 @@ type Stack struct {
 type ComponentConfigMap map[string]ConfigWithMetadata
 
 type ConfigWithMetadata struct {
-	Command                *string              `yaml:"command,omitempty" json:"command,omitempty" mapstructure:"command,omitempty"`
-	Component              string               `yaml:"component,omitempty" json:"component,omitempty" mapstructure:"component,omitempty"`
-	Vars                   map[string]any       `yaml:"vars,omitempty" json:"vars,omitempty"  mapstructure:"vars,omitempty"`
-	Envs                   map[string]string    `yaml:"env,omitempty" json:"env,omitempty"  mapstructure:"env,omitempty"`
-	BackendType            *string              `yaml:"backend_type,omitempty" json:"backend_type,omitempty"  mapstructure:"backend_type,omitempty"`
-	Backend                map[string]any       `yaml:"backend,omitempty" json:"backend,omitempty"  mapstructure:"backend,omitempty"`
-	RemoteStateBackendType *string              `yaml:"remote_state_backend_type,omitempty" json:"remote_state_backend_type,omitempty"  mapstructure:"remote_state_backend_type,omitempty"`
-	RemoteStateBackend     map[string]any       `yaml:"remote_state_backend,omitempty" json:"remote_state_backend,omitempty" mapstructure:"remote_state_backend,omitempty"`
-	Settings               map[string]any       `yaml:"settings,omitempty" json:"settings,omitempty" mapstructure:"settings,omitempty"`
-	Metadata               *components.Metadata `yaml:"metadata,omitempty" json:"metadata,omitempty" mapstructure:"metadata,omitempty"`
+	Command                *string           `yaml:"command,omitempty" json:"command,omitempty" mapstructure:"command,omitempty"`
+	Component              string            `yaml:"component,omitempty" json:"component,omitempty" mapstructure:"component,omitempty"`
+	Vars                   map[string]any    `yaml:"vars,omitempty" json:"vars,omitempty"  mapstructure:"vars,omitempty"`
+	Envs                   map[string]string `yaml:"env,omitempty" json:"env,omitempty"  mapstructure:"env,omitempty"`
+	BackendType            *string           `yaml:"backend_type,omitempty" json:"backend_type,omitempty"  mapstructure:"backend_type,omitempty"`
+	Backend                map[string]any    `yaml:"backend,omitempty" json:"backend,omitempty"  mapstructure:"backend,omitempty"`
+	RemoteStateBackendType *string           `yaml:"remote_state_backend_type,omitempty" json:"remote_state_backend_type,omitempty"  mapstructure:"remote_state_backend_type,omitempty"`
+	RemoteStateBackend     map[string]any    `yaml:"remote_state_backend,omitempty" json:"remote_state_backend,omitempty" mapstructure:"remote_state_backend,omitempty"`
+	Settings               map[string]any    `yaml:"settings,omitempty" json:"settings,omitempty" mapstructure:"settings,omitempty"`
+	Metadata               *schema.Metadata  `yaml:"metadata,omitempty" json:"metadata,omitempty" mapstructure:"metadata,omitempty"`
 }
 
 type ProcessStackOptions struct {
@@ -56,7 +55,7 @@ type StackProcessor interface {
 func NewStackProcessor(source afero.Fs, includePaths []string, excludePaths []string, stackNamePattern string) StackProcessor {
 	tmpl := template.Must(template.New("stackNamePattern").Parse(stackNamePattern))
 
-	sp := &stackProcessor{fs: source, fl: fs.NewMatcherFs(source, matcher(includePaths, excludePaths)), stackNameTemplate: tmpl}
+	sp := &stackProcessor{fs: source, fl: fs.NewMatcherFs(source, fs.IncludeExcludeMatcher(includePaths, excludePaths)), stackNameTemplate: tmpl}
 	sp.cache = cache.NewLoadingCache(func(key cache.Key) (cache.Value, error) {
 		return sp.loadAndProcessStackFile(key.(string))
 	})
@@ -251,7 +250,7 @@ func (sp *stackProcessor) processStackConfig(stk *stack, options ProcessStackOpt
 		}
 	}
 
-	processComponentConfigs := make(map[string]ComponentConfigMap, len(componentTypes))
+	processedComponentConfigs := make(map[string]ComponentConfigMap, len(componentTypes))
 
 	for _, componentType := range componentTypes {
 		componentTypeBaseConfig, err := getBaseConfigForComponentType(stackConfig, componentType)
@@ -270,7 +269,7 @@ func (sp *stackProcessor) processStackConfig(stk *stack, options ProcessStackOpt
 
 		componentsMap := ComponentConfigMap{}
 		for _, k := range componentsToProcess {
-			componentProcessedConfig, err := components.ProcessComponentConfigs(stk.name, componentTypeBaseConfig, stackConfig.Components.Types[componentType], k)
+			componentProcessedConfig, err := processComponentConfigs(stk.name, componentTypeBaseConfig, stackConfig.Components.Types[componentType], k)
 			if err != nil {
 				return nil, err
 			}
@@ -281,10 +280,10 @@ func (sp *stackProcessor) processStackConfig(stk *stack, options ProcessStackOpt
 			componentsMap[k] = configWithMetadata
 		}
 
-		processComponentConfigs[componentType] = componentsMap
+		processedComponentConfigs[componentType] = componentsMap
 	}
 
-	return &Stack{Id: stk.name, Name: stackName, Components: processComponentConfigs, Vars: stackConfig.Vars}, nil
+	return &Stack{Id: stk.name, Name: stackName, Components: processedComponentConfigs, Vars: stackConfig.Vars}, nil
 }
 
 func (sp *stackProcessor) processComponentType(stackName string, stackConfig schema.StackConfig, componentType string) (ComponentConfigMap, error) {
@@ -296,7 +295,7 @@ func (sp *stackProcessor) processComponentType(stackName string, stackConfig sch
 
 	componentsMap := ComponentConfigMap{}
 	for k := range stackConfig.Components.Types[componentType] {
-		componentProcessedConfig, err := components.ProcessComponentConfigs(stackName, componentTypeBaseConfig, stackConfig.Components.Types[componentType], k)
+		componentProcessedConfig, err := processComponentConfigs(stackName, componentTypeBaseConfig, stackConfig.Components.Types[componentType], k)
 		if err != nil {
 			return ComponentConfigMap{}, err
 		}
@@ -317,8 +316,8 @@ func (sp *stackProcessor) getStackName(vars map[string]any) (string, error) {
 	return buff.String(), nil
 }
 
-func getBaseConfigForComponentType(config schema.StackConfig, componentType string) (components.Config, error) {
-	globalConfig := components.Config{
+func getBaseConfigForComponentType(config schema.StackConfig, componentType string) (schema.Config, error) {
+	globalConfig := schema.Config{
 		Vars:     config.Vars,
 		Envs:     config.Envs,
 		Settings: config.Settings,
@@ -326,7 +325,7 @@ func getBaseConfigForComponentType(config schema.StackConfig, componentType stri
 	componentTypeSettings := config.ComponentTypeSettings[componentType]
 	backend := componentTypeSettings.BackendType
 	remoteStateBackend := componentTypeSettings.RemoteStateBackendType
-	stackComponentConfig := components.Config{
+	stackComponentConfig := schema.Config{
 		Vars:                      componentTypeSettings.Vars,
 		Envs:                      componentTypeSettings.Envs,
 		BackendType:               &backend,
@@ -335,10 +334,10 @@ func getBaseConfigForComponentType(config schema.StackConfig, componentType stri
 		RemoteStateBackendConfigs: componentTypeSettings.RemoteStateBackend,
 		Settings:                  componentTypeSettings.Settings,
 	}
-	return components.MergeConfigs(globalConfig, stackComponentConfig)
+	return mergeConfigs(globalConfig, stackComponentConfig)
 }
 
-func toProcessedConfig(stackName string, componentName string, componentProcessedConfig *components.ConfigWithMetadata) (ConfigWithMetadata, error) {
+func toProcessedConfig(stackName string, componentName string, componentProcessedConfig *schema.ConfigWithMetadata) (ConfigWithMetadata, error) {
 	var processedBackend, processedRemoteStateBackend map[string]any
 	if componentProcessedConfig.BackendType != nil && *componentProcessedConfig.BackendType != "" {
 		var found bool

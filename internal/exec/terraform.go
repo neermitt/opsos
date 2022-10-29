@@ -35,6 +35,11 @@ func ExecuteTerraform(ctx context.Context, stackName string, component string, a
 	}
 
 	conf := config.GetConfig(ctx)
+
+	if err := components.PrepareComponent(ctx, terraform.ComponentType, component); err != nil {
+		return err
+	}
+
 	if conf.Components.Terraform.AutoGenerateBackendFile {
 		if err := terraform.GenerateBackendFile(exeCtx, "json"); err != nil {
 			return err
