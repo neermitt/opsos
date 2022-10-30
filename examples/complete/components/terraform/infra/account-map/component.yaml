@@ -26,10 +26,6 @@ spec:
       # include the 'modules' folder and all sub-folders
       # note that if you don't include the folders, the files in the folders will not be included
       - "**/modules/**"
-      # include '.tf', '.tfvars' and '.md' files from the 'modules' folder and all sub-folders
-      - "**/modules/**/*.tf"
-      - "**/modules/**/*.tfvars"
-      - "**/modules/**/*.md"
     # Exclude the files that match any of the 'excluded_paths' patterns
     # Note that we are excluding 'context.tf' since a newer version of it will be downloaded using 'mixins'
     # 'excluded_paths' support POSIX-style Globs for file names/paths (double-star `**` is supported)

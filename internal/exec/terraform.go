@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 
+	"github.com/neermitt/opsos/pkg/components"
 	"github.com/neermitt/opsos/pkg/config"
 	"github.com/neermitt/opsos/pkg/plugins/terraform"
 	"github.com/neermitt/opsos/pkg/utils"
@@ -28,6 +29,10 @@ func ExecuteTerraform(ctx context.Context, stackName string, component string, a
 		return err
 	}
 
+	if err := components.PrepareComponent(ctx, terraform.ComponentType, component); err != nil {
+		return err
+	}
+
 	if options.RequiresVarFile {
 		if err := terraform.GenerateVarFileFile(exeCtx, "json"); err != nil {
 			return err
@@ -35,10 +40,6 @@ func ExecuteTerraform(ctx context.Context, stackName string, component string, a
 	}
 
 	conf := config.GetConfig(ctx)
-
-	if err := components.PrepareComponent(ctx, terraform.ComponentType, component); err != nil {
-		return err
-	}
 
 	if conf.Components.Terraform.AutoGenerateBackendFile {
 		if err := terraform.GenerateBackendFile(exeCtx, "json"); err != nil {

@@ -84,7 +84,7 @@ func copyFromSource(ctx context.Context, destDir string, source VendorComponentS
 
 	matcher := fs.IncludeExcludeMatcher(source.IncludedPaths, source.ExcludedPaths)
 
-	return downloadAndCopy(ctx, uri, ".", destDir, matcher)
+	return downloadAndCopy(ctx, getter.ClientModeDir, uri, ".", destDir, matcher)
 }
 
 func overrideMixin(ctx context.Context, componentPath string, destDir string, mixin VendorComponentMixins) error {
@@ -122,10 +122,10 @@ func overrideMixin(ctx context.Context, componentPath string, destDir string, mi
 		uri = absPath
 	}
 
-	return downloadAndCopy(ctx, mixin.Uri, mixin.Filename, destDir, fs.NewAllMatcher())
+	return downloadAndCopy(ctx, getter.ClientModeFile, uri, mixin.Filename, destDir, fs.NewAllMatcher())
 }
 
-func downloadAndCopy(ctx context.Context, url string, subDir string, destDir string, matcher fs.Matcher) error {
+func downloadAndCopy(ctx context.Context, mode getter.ClientMode, url string, subDir string, destDir string, matcher fs.Matcher) error {
 	tempDir, err := os.MkdirTemp("", strconv.FormatInt(time.Now().Unix(), 10))
 	if err != nil {
 		return err
@@ -141,7 +141,7 @@ func downloadAndCopy(ctx context.Context, url string, subDir string, destDir str
 		Ctx:  ctx,
 		Dst:  filepath.Clean(filepath.Join(tempDir, subDir)),
 		Src:  url,
-		Mode: getter.ClientModeDir,
+		Mode: mode,
 	}
 	if err = client.Get(); err != nil {
 		return err
