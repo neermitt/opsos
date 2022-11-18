@@ -8,12 +8,22 @@ import (
 	"strings"
 )
 
+// FileExists checks if file exists and is not a directory
 func FileExists(filename string) bool {
 	fileInfo, err := os.Stat(filename)
 	if os.IsNotExist(err) || err != nil {
 		return false
 	}
 	return !fileInfo.IsDir()
+}
+
+// IsDir Checks if the filename exists and is a directory
+func IsDir(filename string) bool {
+	fileInfo, err := os.Stat(filename)
+	if os.IsNotExist(err) || err != nil {
+		return false
+	}
+	return fileInfo.IsDir()
 }
 
 // PrintOrWriteToFile converts the provided value to given format and writes it to the specified file

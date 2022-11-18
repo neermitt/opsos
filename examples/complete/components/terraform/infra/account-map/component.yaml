@@ -1,7 +1,7 @@
 # 'account-map' component vendoring config
 
-apiVersion: atmos/v1
-kind: ComponentVendorConfig
+apiVersion: opsos/v1
+kind: Component
 metadata:
   name: account-map-vendor-config
   description: Source and mixins config for vendoring of 'vpc-flow-logs-bucket' component
@@ -23,13 +23,6 @@ spec:
       - "**/*.tf"
       - "**/*.tfvars"
       - "**/*.md"
-      # include the 'modules' folder and all sub-folders
-      # note that if you don't include the folders, the files in the folders will not be included
-      - "**/modules/**"
-    # Exclude the files that match any of the 'excluded_paths' patterns
-    # Note that we are excluding 'context.tf' since a newer version of it will be downloaded using 'mixins'
-    # 'excluded_paths' support POSIX-style Globs for file names/paths (double-star `**` is supported)
-    excluded_paths: []
 
   # mixins override files from 'source' with the same 'filename' (e.g. 'context.tf' will override 'context.tf' from the 'source')
   # mixins are processed in the order they are declared in the list

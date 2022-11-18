@@ -13,11 +13,11 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-getter"
+	v1 "github.com/neermitt/opsos/api/v1"
 	"github.com/neermitt/opsos/pkg/utils"
 	"github.com/neermitt/opsos/pkg/utils/fs"
 	"github.com/otiai10/copy"
 	"github.com/spf13/afero"
-	"gopkg.in/yaml.v3"
 )
 
 const componentConfigFileName = "component.yaml"
@@ -35,20 +35,19 @@ func PrepareComponent(ctx context.Context, componentPath string, dstDir string, 
 		return nil
 	}
 
-	componentConfigFileContent, err := afero.ReadFile(componentFs, componentConfigFileName)
+	f, err := componentFs.Open(componentConfigFileName)
+	if err != nil {
+		return err
+	}
+	component, err := v1.ReadComponent(f)
 	if err != nil {
 		return err
 	}
 
-	var componentConfig ComponentConfig
-	if err = yaml.Unmarshal(componentConfigFileContent, &componentConfig); err != nil {
-		return err
-	}
-
-	return PrepareComponentBySpec(ctx, componentPath, dstDir, componentConfig.Spec, options)
+	return PrepareComponentBySpec(ctx, componentPath, dstDir, component.Spec, options)
 }
 
-func PrepareComponentBySpec(ctx context.Context, componentPath string, dstDir string, spec ComponentSpec, options PrepareComponentOptions) error {
+func PrepareComponentBySpec(ctx context.Context, componentPath string, dstDir string, spec v1.ComponentSpec, options PrepareComponentOptions) error {
 	if err := copyFromSource(ctx, dstDir, spec.Source, options); err != nil {
 		return err
 	}
@@ -61,7 +60,7 @@ func PrepareComponentBySpec(ctx context.Context, componentPath string, dstDir st
 	return nil
 }
 
-func copyFromSource(ctx context.Context, destDir string, source VendorComponentSource, options PrepareComponentOptions) error {
+func copyFromSource(ctx context.Context, destDir string, source v1.ComponentSource, options PrepareComponentOptions) error {
 	var uri string
 	// Parse 'uri' template
 	if source.Version != "" {
@@ -86,7 +85,7 @@ func copyFromSource(ctx context.Context, destDir string, source VendorComponentS
 	return downloadAndCopy(ctx, getter.ClientModeDir, uri, ".", destDir, matcher, options)
 }
 
-func overrideMixin(ctx context.Context, componentPath string, destDir string, mixin VendorComponentMixins, options PrepareComponentOptions) error {
+func overrideMixin(ctx context.Context, componentPath string, destDir string, mixin v1.ComponentMixins, options PrepareComponentOptions) error {
 	var uri string
 	if mixin.Uri == "" {
 		return errors.New("'uri' must be specified for each 'mixin' in the 'component.yaml' file")
@@ -155,6 +154,9 @@ func downloadAndCopy(ctx context.Context, mode getter.ClientMode, url string, su
 		Skip: func(src string) (bool, error) {
 			if strings.HasSuffix(src, ".git") {
 				return true, nil
+			}
+			if utils.IsDir(src) {
+				return false, nil
 			}
 			trimmedSrc := utils.TrimBasePathFromPath(tempDir+"/", src)
 			return !matcher.Match(trimmedSrc), nil
