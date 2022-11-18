@@ -25,7 +25,7 @@ func TestComponentRead(t *testing.T) {
 			Kind:       "Component",
 			Metadata: common.ObjectMetadata{
 				Name:        "account-map-vendor-config",
-				Description: "Source and mixins config for vendoring of 'vpc-flow-logs-bucket' component",
+				Description: "Source and mixins config for building 'vpc-flow-logs-bucket' component",
 			},
 		},
 		Spec: v1.ComponentSpec{

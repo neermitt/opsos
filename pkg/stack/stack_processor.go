@@ -237,7 +237,7 @@ func (sp *stackProcessor) processStackConfig(stk *stack, component *Component) (
 	}
 
 	var componentTypes []string
-	if component != nil {
+	if component != nil && component.Type != "" {
 		componentTypes = []string{component.Type}
 	} else {
 		for k := range stackConfig.ComponentTypeSettings {
@@ -254,7 +254,7 @@ func (sp *stackProcessor) processStackConfig(stk *stack, component *Component) (
 		}
 
 		var componentsToProcess []string
-		if component != nil {
+		if component != nil && component.Name != "" {
 			componentsToProcess = []string{component.Name}
 		} else {
 			for k := range stackConfig.Components.Types[componentType] {
