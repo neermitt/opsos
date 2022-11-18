@@ -9,9 +9,6 @@ import:
 components:
   terraform:
     "test/test-component":
-      settings:
-        spacelift:
-          workspace_enabled: true
       # Setting `metadata.type: abstract` makes the component `abstract` (similar to OOP abstract classes, which can't be instantiated),
       # explicitly prohibiting the component from being deployed,
       # and a Spacelift stack from being created for the component (even if `settings.spacelift.workspace_enabled: true`).

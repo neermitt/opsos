@@ -1,15 +1,19 @@
 package terraform
 
 import (
+	"context"
 	"fmt"
-	"github.com/neermitt/opsos/pkg/config"
 	"os"
 
+	"github.com/neermitt/opsos/pkg/config"
+	"github.com/neermitt/opsos/pkg/utils"
 	"github.com/spf13/afero"
 )
 
-func Clean(ectx ExecutionContext, clearDataDir bool) error {
-	fs := afero.NewBasePathFs(afero.NewOsFs(), ectx.execOptions.WorkingDirectory)
+func Clean(ctx context.Context, clearDataDir bool) error {
+	execOptions := utils.GetExecOptions(ctx)
+
+	fs := afero.NewBasePathFs(afero.NewOsFs(), execOptions.WorkingDirectory)
 	fmt.Println("Deleting '.terraform' folder")
 	if err := fs.RemoveAll(".terraform"); err != nil {
 		return err
@@ -25,11 +29,11 @@ func Clean(ectx ExecutionContext, clearDataDir bool) error {
 		return err
 	}
 
-	if err := CleanPlanFile(ectx); err != nil {
+	if err := cleanPlanFileFromComponentDir(execOptions.WorkingDirectory); err != nil {
 		return err
 	}
 
-	conf := config.GetConfig(ectx.Context)
+	conf := config.GetConfig(ctx)
 	// If `auto_generate_backend_file` is `true` (we are auto-generating backend files), remove `backend.tf.json`
 	if conf.Components.Terraform.AutoGenerateBackendFile {
 		fmt.Println("Deleting 'backend.tf*' file")
@@ -52,8 +56,13 @@ func Clean(ectx ExecutionContext, clearDataDir bool) error {
 	return nil
 }
 
-func CleanPlanFile(exeCtx ExecutionContext) error {
-	fs := afero.NewBasePathFs(afero.NewOsFs(), exeCtx.execOptions.WorkingDirectory)
+func CleanPlanFile(ctx context.Context) error {
+	execOptions := utils.GetExecOptions(ctx)
+	return cleanPlanFileFromComponentDir(execOptions.WorkingDirectory)
+}
+
+func cleanPlanFileFromComponentDir(componentDir string) error {
+	fs := afero.NewBasePathFs(afero.NewOsFs(), componentDir)
 	fmt.Printf("Deleting terraform plan: %s\n", "*.planfile")
 	return removeAllFiles(fs, "*.planfile")
 }

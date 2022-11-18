@@ -35,3 +35,11 @@ func ExecuteShellCommand(ctx context.Context, command string, args []string, opt
 
 	return cmd.Run()
 }
+
+func SetExecOptions(ctx context.Context, component ExecOptions) context.Context {
+	return context.WithValue(ctx, "exec-options", component)
+}
+
+func GetExecOptions(ctx context.Context) ExecOptions {
+	return ctx.Value("exec-options").(ExecOptions)
+}

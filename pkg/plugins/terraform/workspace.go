@@ -1,6 +1,7 @@
 package terraform
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -27,9 +28,10 @@ func ConstructWorkspaceName(stack *stack.Stack, componentName string, config sta
 	return strings.Replace(workspace, "/", "-", -1), nil
 }
 
-func SelectOrCreateWorkspace(execCtx ExecutionContext) error {
-	if err := ExecuteCommand(execCtx, []string{"workspace", "select", execCtx.workspaceName}); err != nil {
-		return ExecuteCommand(execCtx, []string{"workspace", "new", execCtx.workspaceName})
+func SelectOrCreateWorkspace(ctx context.Context) error {
+	terraformSettings := GetTerraformSettings(ctx)
+	if err := ExecuteCommand(ctx, []string{"workspace", "select", terraformSettings.WorkspaceName}); err != nil {
+		return ExecuteCommand(ctx, []string{"workspace", "new", terraformSettings.WorkspaceName})
 	}
 	return nil
 }

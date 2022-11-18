@@ -37,9 +37,3 @@ bin/
 .terraform/
 terraform.tfstate.d/
 
-
-!examples/complete/components/**/component.yaml
-
-examples/complete/components/terraform/infra/account-map/**/*.tf
-examples/complete/components/terraform/infra/vpc-flow-logs-bucket/**/*.tf
-examples/complete/components/terraform/infra/test/**/*.tf

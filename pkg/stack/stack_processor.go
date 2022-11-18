@@ -41,14 +41,9 @@ type ConfigWithMetadata struct {
 	Metadata               *schema.Metadata  `yaml:"metadata,omitempty" json:"metadata,omitempty" mapstructure:"metadata,omitempty"`
 }
 
-type ProcessStackOptions struct {
-	ComponentName string
-	ComponentType string
-}
-
 type StackProcessor interface {
 	GetStackNames() ([]string, error)
-	GetStack(name string, options ProcessStackOptions) (*Stack, error)
+	GetStack(name string, component *Component) (*Stack, error)
 	GetStacks(names []string) ([]*Stack, error)
 }
 
@@ -92,12 +87,12 @@ func (sp *stackProcessor) GetStackNames() ([]string, error) {
 	return files, err
 }
 
-func (sp *stackProcessor) GetStack(name string, options ProcessStackOptions) (*Stack, error) {
+func (sp *stackProcessor) GetStack(name string, component *Component) (*Stack, error) {
 	stackConfig, err := sp.loadAndProcessStackFile(name)
 	if err != nil {
 		return nil, err
 	}
-	return sp.processStackConfig(stackConfig, options)
+	return sp.processStackConfig(stackConfig, component)
 }
 
 func (sp *stackProcessor) GetStacks(names []string) ([]*Stack, error) {
@@ -107,7 +102,7 @@ func (sp *stackProcessor) GetStacks(names []string) ([]*Stack, error) {
 	}
 	out := make([]*Stack, len(stkConfigs))
 	for i, stkConfig := range stkConfigs {
-		stk, err := sp.processStackConfig(stkConfig, ProcessStackOptions{})
+		stk, err := sp.processStackConfig(stkConfig, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -229,7 +224,7 @@ type stack struct {
 	Config map[string]any `yaml:",inline"`
 }
 
-func (sp *stackProcessor) processStackConfig(stk *stack, options ProcessStackOptions) (*Stack, error) {
+func (sp *stackProcessor) processStackConfig(stk *stack, component *Component) (*Stack, error) {
 	var stackConfig schema.StackConfig
 	err := mapstructure.Decode(stk.Config, &stackConfig)
 	if err != nil {
@@ -242,8 +237,8 @@ func (sp *stackProcessor) processStackConfig(stk *stack, options ProcessStackOpt
 	}
 
 	var componentTypes []string
-	if options.ComponentType != "" {
-		componentTypes = []string{options.ComponentType}
+	if component != nil {
+		componentTypes = []string{component.Type}
 	} else {
 		for k := range stackConfig.ComponentTypeSettings {
 			componentTypes = append(componentTypes, k)
@@ -259,8 +254,8 @@ func (sp *stackProcessor) processStackConfig(stk *stack, options ProcessStackOpt
 		}
 
 		var componentsToProcess []string
-		if options.ComponentName != "" {
-			componentsToProcess = []string{options.ComponentName}
+		if component != nil {
+			componentsToProcess = []string{component.Name}
 		} else {
 			for k := range stackConfig.Components.Types[componentType] {
 				componentsToProcess = append(componentsToProcess, k)

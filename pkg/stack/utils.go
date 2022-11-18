@@ -10,9 +10,8 @@ import (
 )
 
 type LoadStackOptions struct {
-	Stack         string
-	ComponentType string
-	ComponentName string
+	Stack     string
+	Component *Component
 }
 
 func LoadStack(ctx context.Context, options LoadStackOptions) (*Stack, error) {
@@ -34,5 +33,5 @@ func LoadStack(ctx context.Context, options LoadStackOptions) (*Stack, error) {
 	if !utils.StringInSlice(options.Stack, stackNames) {
 		return nil, fmt.Errorf("stack %s not found", options.Stack)
 	}
-	return stackProcessor.GetStack(options.Stack, ProcessStackOptions{ComponentType: options.ComponentType, ComponentName: options.ComponentName})
+	return stackProcessor.GetStack(options.Stack, options.Component)
 }

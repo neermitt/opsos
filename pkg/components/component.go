@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-getter"
-	"github.com/neermitt/opsos/pkg/config"
 	"github.com/neermitt/opsos/pkg/utils"
 	"github.com/neermitt/opsos/pkg/utils/fs"
 	"github.com/otiai10/copy"
@@ -23,10 +22,11 @@ import (
 
 const componentConfigFileName = "component.yaml"
 
-func PrepareComponent(ctx context.Context, componentType string, componentName string) error {
-	conf := config.GetConfig(ctx)
-	componentPath := GetWorkingDirectory(conf, componentType, componentName)
+type PrepareComponentOptions struct {
+	DryRun bool
+}
 
+func PrepareComponent(ctx context.Context, componentPath string, dstDir string, options PrepareComponentOptions) error {
 	componentFs := afero.NewBasePathFs(afero.NewOsFs(), componentPath)
 
 	if exists, err := afero.Exists(componentFs, componentConfigFileName); err != nil {
@@ -45,16 +45,15 @@ func PrepareComponent(ctx context.Context, componentType string, componentName s
 		return err
 	}
 
-	return PrepareComponentBySpec(ctx, componentPath, componentConfig.Spec)
+	return PrepareComponentBySpec(ctx, componentPath, dstDir, componentConfig.Spec, options)
 }
 
-func PrepareComponentBySpec(ctx context.Context, componentPath string, spec ComponentSpec) error {
-
-	if err := copyFromSource(ctx, componentPath, spec.Source); err != nil {
+func PrepareComponentBySpec(ctx context.Context, componentPath string, dstDir string, spec ComponentSpec, options PrepareComponentOptions) error {
+	if err := copyFromSource(ctx, dstDir, spec.Source, options); err != nil {
 		return err
 	}
 	for _, mixin := range spec.Mixins {
-		if err := overrideMixin(ctx, componentPath, componentPath, mixin); err != nil {
+		if err := overrideMixin(ctx, componentPath, dstDir, mixin, options); err != nil {
 			return err
 		}
 	}
@@ -62,7 +61,7 @@ func PrepareComponentBySpec(ctx context.Context, componentPath string, spec Comp
 	return nil
 }
 
-func copyFromSource(ctx context.Context, destDir string, source VendorComponentSource) error {
+func copyFromSource(ctx context.Context, destDir string, source VendorComponentSource, options PrepareComponentOptions) error {
 	var uri string
 	// Parse 'uri' template
 	if source.Version != "" {
@@ -84,10 +83,10 @@ func copyFromSource(ctx context.Context, destDir string, source VendorComponentS
 
 	matcher := fs.IncludeExcludeMatcher(source.IncludedPaths, source.ExcludedPaths)
 
-	return downloadAndCopy(ctx, getter.ClientModeDir, uri, ".", destDir, matcher)
+	return downloadAndCopy(ctx, getter.ClientModeDir, uri, ".", destDir, matcher, options)
 }
 
-func overrideMixin(ctx context.Context, componentPath string, destDir string, mixin VendorComponentMixins) error {
+func overrideMixin(ctx context.Context, componentPath string, destDir string, mixin VendorComponentMixins, options PrepareComponentOptions) error {
 	var uri string
 	if mixin.Uri == "" {
 		return errors.New("'uri' must be specified for each 'mixin' in the 'component.yaml' file")
@@ -122,10 +121,13 @@ func overrideMixin(ctx context.Context, componentPath string, destDir string, mi
 		uri = absPath
 	}
 
-	return downloadAndCopy(ctx, getter.ClientModeFile, uri, mixin.Filename, destDir, fs.NewAllMatcher())
+	return downloadAndCopy(ctx, getter.ClientModeFile, uri, mixin.Filename, destDir, fs.NewAllMatcher(), options)
 }
 
-func downloadAndCopy(ctx context.Context, mode getter.ClientMode, url string, subDir string, destDir string, matcher fs.Matcher) error {
+func downloadAndCopy(ctx context.Context, mode getter.ClientMode, url string, subDir string, destDir string, matcher fs.Matcher, options PrepareComponentOptions) error {
+	if options.DryRun {
+		return nil
+	}
 	tempDir, err := os.MkdirTemp("", strconv.FormatInt(time.Now().Unix(), 10))
 	if err != nil {
 		return err

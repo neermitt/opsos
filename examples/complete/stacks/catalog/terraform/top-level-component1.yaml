@@ -9,8 +9,5 @@ import:
 components:
   terraform:
     top-level-component1:
-      settings:
-        spacelift:
-          workspace_enabled: true
       vars:
         enabled: true

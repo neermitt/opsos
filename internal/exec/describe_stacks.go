@@ -44,7 +44,7 @@ func ExecuteDescribeStacks(cmd *cobra.Command, options DescribeStackOptions) err
 		if !utils.StringInSlice(options.Stack, stackNames) {
 			return fmt.Errorf("stack %s not found", options.Stack)
 		} else {
-			stk, err := stackProcessor.GetStack(options.Stack, stack.ProcessStackOptions{})
+			stk, err := stackProcessor.GetStack(options.Stack, nil)
 			if err != nil {
 				return err
 			}

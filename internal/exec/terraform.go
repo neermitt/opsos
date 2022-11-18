@@ -5,9 +5,9 @@ import (
 	"errors"
 	"os"
 
-	"github.com/neermitt/opsos/pkg/components"
 	"github.com/neermitt/opsos/pkg/config"
 	"github.com/neermitt/opsos/pkg/plugins/terraform"
+	"github.com/neermitt/opsos/pkg/stack"
 	"github.com/neermitt/opsos/pkg/utils"
 )
 
@@ -23,18 +23,22 @@ type TerraformOptions struct {
 	CleanPlanFileOnCompletion bool
 }
 
-func ExecuteTerraform(ctx context.Context, stackName string, component string, additionalArgs []string, options TerraformOptions) error {
-	exeCtx, err := terraform.NewExecutionContext(ctx, stackName, component, options.DryRun)
+func ExecuteTerraform(ctx context.Context, stackName string, componentName string, additionalArgs []string, options TerraformOptions) error {
+
+	component := stack.Component{Type: terraform.ComponentType, Name: componentName}
+	ctx = stack.SetStackName(ctx, stackName)
+	ctx = stack.SetComponent(ctx, component)
+	stk, err := stack.LoadStack(ctx, stack.LoadStackOptions{Stack: stackName, Component: &component})
+	if err != nil {
+		return err
+	}
+	ctx, err = terraform.NewExecutionContext(ctx, stk, component, options.DryRun)
 	if err != nil {
 		return err
 	}
 
-	if err := components.PrepareComponent(ctx, terraform.ComponentType, component); err != nil {
-		return err
-	}
-
 	if options.RequiresVarFile {
-		if err := terraform.GenerateVarFileFile(exeCtx, "json"); err != nil {
+		if err := terraform.GenerateVarFileFile(ctx, "json"); err != nil {
 			return err
 		}
 	}
@@ -42,56 +46,58 @@ func ExecuteTerraform(ctx context.Context, stackName string, component string, a
 	conf := config.GetConfig(ctx)
 
 	if conf.Components.Terraform.AutoGenerateBackendFile {
-		if err := terraform.GenerateBackendFile(exeCtx, "json"); err != nil {
+		if err := terraform.GenerateBackendFile(ctx, "json"); err != nil {
 			return err
 		}
 	}
 
 	if !options.SkipInit {
-		initArgs, err := prepareArgs(exeCtx, nil, TerraformOptions{Command: "init"})
+		initArgs, err := prepareArgs(ctx, nil, TerraformOptions{Command: "init"})
 		if err != nil {
 			return err
 		}
-		if err := terraform.ExecuteCommand(exeCtx, initArgs); err != nil {
+		if err := terraform.ExecuteCommand(ctx, initArgs); err != nil {
 			return err
 		}
 	}
 	if !options.SkipWorkspace {
-		if err := terraform.SelectOrCreateWorkspace(exeCtx); err != nil {
+		if err := terraform.SelectOrCreateWorkspace(ctx); err != nil {
 			return err
 		}
 	}
 
-	args, err := prepareArgs(exeCtx, additionalArgs, options)
+	args, err := prepareArgs(ctx, additionalArgs, options)
 	if err != nil {
 		return err
 	}
 
 	if options.Command == "shell" {
-		return terraform.ExecuteShell(exeCtx)
+		return terraform.ExecuteShell(ctx)
 	}
-	if err := terraform.ExecuteCommand(exeCtx, args); err != nil {
+	if err := terraform.ExecuteCommand(ctx, args); err != nil {
 		return err
 	}
 	if options.CleanPlanFileOnCompletion {
-		return terraform.CleanPlanFile(exeCtx)
+		return terraform.CleanPlanFile(ctx)
 	}
 	return nil
 }
 
-func prepareArgs(exeCtx terraform.ExecutionContext, additionalArgs []string, options TerraformOptions) ([]string, error) {
-	conf := config.GetConfig(exeCtx.Context)
+func prepareArgs(ctx context.Context, additionalArgs []string, options TerraformOptions) ([]string, error) {
+	conf := config.GetConfig(ctx)
 	args := []string{options.Command}
 
+	terraformSettings := terraform.GetTerraformSettings(ctx)
+
 	if options.UsePlan {
-		args = append(args, exeCtx.PlanFile)
+		args = append(args, terraformSettings.PlanFile)
 	} else if options.RequiresVarFile {
-		args = append(args, "-var-file", exeCtx.VarFile)
+		args = append(args, "-var-file", terraformSettings.VarFile)
 	}
 
 	switch options.Command {
 	case "plan":
-		args = append(args, "-out", exeCtx.PlanFile)
+		args = append(args, "-out", terraformSettings.PlanFile)
 	case "init":
 		if conf.Components.Terraform.InitRunReconfigure {
 			args = append(args, "-reconfigure")

@@ -37,6 +37,6 @@ var (
 
 func TestGetComponent(t *testing.T) {
 	tmpDir := t.TempDir()
-	err := PrepareComponentBySpec(context.Background(), tmpDir, component1.Spec)
+	err := PrepareComponentBySpec(context.Background(), tmpDir, tmpDir, component1.Spec, PrepareComponentOptions{DryRun: false})
 	require.NoError(t, err)
 }
