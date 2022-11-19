@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-playground/validator"
 	"github.com/mitchellh/go-homedir"
+	v1 "github.com/neermitt/opsos/api/v1"
 	"github.com/neermitt/opsos/pkg/globals"
 	"github.com/neermitt/opsos/pkg/logging"
 	"github.com/neermitt/opsos/pkg/utils"
@@ -18,7 +19,7 @@ import (
 // InitConfig finds and merges CLI configurations in the following order: system dir, home dir, current dir, ENV vars, command-line arguments
 // https://dev.to/techschoolguru/load-config-from-file-environment-variables-in-golang-with-viper-2j2d
 // https://medium.com/@bnprashanth256/reading-configuration-files-and-environment-variables-in-go-golang-c2607f912b63
-func InitConfig() (*Configuration, error) {
+func InitConfig() (*v1.ConfigSpec, error) {
 	// Config is loaded from the following locations (from lower to higher priority):
 	// system dir (`/usr/local/etc/opsos` on Linux, `%LOCALAPPDATA%/opsos` on Windows)
 	// home dir (~/.opsos)
@@ -39,15 +40,15 @@ func InitConfig() (*Configuration, error) {
 	viper.SetDefault("stacks.included_paths", nil)
 	viper.SetDefault("stacks.excluded_paths", nil)
 	viper.SetDefault("stacks.name_pattern", "")
-	viper.SetDefault("components.terraform.base_path", "")
-	viper.SetDefault("components.terraform.apply_auto_approve", false)
-	viper.SetDefault("components.terraform.deploy_run_init", false)
-	viper.SetDefault("components.terraform.auto_generate_backend_file", false)
-	viper.SetDefault("components.helmfile.base_path", "")
-	viper.SetDefault("components.helmfile.kube_config_path", "")
-	viper.SetDefault("components.helmfile.cluster_name_pattern", "")
-	viper.SetDefault("components.helmfile.envs", nil)
-	viper.SetDefault("workflows.base_path", "")
+	viper.SetDefault("terraform.base_path", "")
+	viper.SetDefault("terraform.apply_auto_approve", false)
+	viper.SetDefault("terraform.deploy_run_init", false)
+	viper.SetDefault("terraform.auto_generate_backend_file", false)
+	viper.SetDefault("helmfile.base_path", "")
+	viper.SetDefault("helmfile.kube_config_path", "")
+	viper.SetDefault("helmfile.cluster_name_pattern", "")
+	viper.SetDefault("helmfile.envs", nil)
+	viper.SetDefault("kind.cluster_name_pattern", "")
 
 	// Process config in home dir
 	homeDir, err := homedir.Dir()
@@ -71,72 +72,35 @@ func InitConfig() (*Configuration, error) {
 		configDirs = append(configDirs, configPathEnv)
 	}
 
-	configFound := false
-
-	for _, cd := range configDirs {
-		if len(cd) > 0 {
-			found, err := processConfigFile(cd)
-			if err != nil {
-				return nil, err
-			}
-			if found {
-				configFound = true
-			}
-		}
+	conf, err := v1.ReadAndMergeConfigsFromDirs(configDirs)
+	if err != nil {
+		return nil, err
 	}
 
-	if !configFound {
+	if conf == nil {
 		return nil, fmt.Errorf("%s' CLI config files not found in any of the searched paths: system dir, home dir, current dir, ENV vars", globals.ConfigFileName)
 	}
 
-	// https://gist.github.com/chazcheadle/45bf85b793dea2b71bd05ebaa3c28644
-	// https://sagikazarmark.hu/blog/decoding-custom-formats-with-viper/
-	var config Configuration
-	err = viper.Unmarshal(&config)
+	yamlConfig, err := utils.ConvertToYAML(conf.Spec)
+	if err != nil {
+		return nil, err
+	}
+
+	err = viper.MergeConfig(strings.NewReader(yamlConfig))
+	if err != nil {
+		return nil, err
+	}
+
+	var confSpec v1.ConfigSpec
+	err = viper.Unmarshal(&confSpec)
 	if err != nil {
 		return nil, err
 	}
 
 	validate := validator.New()
-	if err = validate.Struct(&config); err != nil {
+	if err = validate.Struct(&conf.Spec); err != nil {
 		return nil, err
 	}
 
-	return &config, nil
-}
-
-// https://github.com/NCAR/go-figure
-// https://github.com/spf13/viper/issues/181
-// https://medium.com/@bnprashanth256/reading-configuration-files-and-environment-variables-in-go-golang-c2607f912b63
-func processConfigFile(configDir string) (bool, error) {
-	logger := logging.Logger.With(zap.String("path", configDir))
-
-	configFile := path.Join(configDir, globals.ConfigFileName)
-	if !utils.FileExists(configFile) {
-		logger.Info("No config file found")
-		return false, nil
-	}
-
-	logger.Info("Found config file")
-
-	reader, err := os.Open(configFile)
-	if err != nil {
-		return false, err
-	}
-
-	defer func(reader *os.File) {
-		err := reader.Close()
-		if err != nil {
-			logging.Logger.Error("error closing file", zap.Error(err))
-		}
-	}(reader)
-
-	err = viper.MergeConfig(reader)
-	if err != nil {
-		return false, err
-	}
-
-	logger.Info("Processed CLI config")
-
-	return true, nil
+	return &confSpec, nil
 }

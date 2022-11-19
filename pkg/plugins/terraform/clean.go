@@ -34,8 +34,14 @@ func Clean(ctx context.Context, clearDataDir bool) error {
 	}
 
 	conf := config.GetConfig(ctx)
+	var terraformConfig Config
+	err := utils.FromMap(conf.Providers[ComponentType], &terraformConfig)
+	if err != nil {
+		return err
+	}
+
 	// If `auto_generate_backend_file` is `true` (we are auto-generating backend files), remove `backend.tf.json`
-	if conf.Components.Terraform.AutoGenerateBackendFile {
+	if terraformConfig.AutoGenerateBackendFile {
 		fmt.Println("Deleting 'backend.tf*' file")
 		if err := removeAllFiles(fs, "backend.tf*"); err != nil {
 			return err

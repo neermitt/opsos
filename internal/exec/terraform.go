@@ -44,15 +44,20 @@ func ExecuteTerraform(ctx context.Context, stackName string, componentName strin
 	}
 
 	conf := config.GetConfig(ctx)
+	var terraformConfig terraform.Config
+	err = utils.FromMap(conf.Providers[terraform.ComponentType], &terraformConfig)
+	if err != nil {
+		return err
+	}
 
-	if conf.Components.Terraform.AutoGenerateBackendFile {
+	if terraformConfig.AutoGenerateBackendFile {
 		if err := terraform.GenerateBackendFile(ctx, "json"); err != nil {
 			return err
 		}
 	}
 
 	if !options.SkipInit {
-		initArgs, err := prepareArgs(ctx, nil, TerraformOptions{Command: "init"})
+		initArgs, err := prepareArgs(ctx, terraformConfig, nil, TerraformOptions{Command: "init"})
 		if err != nil {
 			return err
 		}
@@ -66,7 +71,7 @@ func ExecuteTerraform(ctx context.Context, stackName string, componentName strin
 		}
 	}
 
-	args, err := prepareArgs(ctx, additionalArgs, options)
+	args, err := prepareArgs(ctx, terraformConfig, additionalArgs, options)
 	if err != nil {
 		return err
 	}
@@ -83,8 +88,7 @@ func ExecuteTerraform(ctx context.Context, stackName string, componentName strin
 	return nil
 }
 
-func prepareArgs(ctx context.Context, additionalArgs []string, options TerraformOptions) ([]string, error) {
-	conf := config.GetConfig(ctx)
+func prepareArgs(ctx context.Context, terraformConfig terraform.Config, additionalArgs []string, options TerraformOptions) ([]string, error) {
 	args := []string{options.Command}
 
 	terraformSettings := terraform.GetTerraformSettings(ctx)
@@ -99,12 +103,12 @@ func prepareArgs(ctx context.Context, additionalArgs []string, options Terraform
 	case "plan":
 		args = append(args, "-out", terraformSettings.PlanFile)
 	case "init":
-		if conf.Components.Terraform.InitRunReconfigure {
+		if terraformConfig.InitRunReconfigure {
 			args = append(args, "-reconfigure")
 		}
 	case "apply":
 		if !utils.StringInSlice(terraform.AutoApproveFlag, additionalArgs) {
-			if (conf.Components.Terraform.ApplyAutoApprove || options.AutoApprove) && !options.UsePlan {
+			if (terraformConfig.ApplyAutoApprove || options.AutoApprove) && !options.UsePlan {
 				args = append(args, terraform.AutoApproveFlag)
 			} else if os.Stdin == nil {
 				return nil, errors.New("'terraform apply' requires a user interaction, but it's running without `tty` or `stdin` attached.\nUse 'terraform apply -auto-approve' or 'terraform deploy' instead.")

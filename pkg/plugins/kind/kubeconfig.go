@@ -4,15 +4,17 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/neermitt/opsos/pkg/stack"
 	"os"
 	"strings"
 
+	v1 "github.com/neermitt/opsos/api/v1"
 	"github.com/neermitt/opsos/pkg/config"
 	"github.com/neermitt/opsos/pkg/plugins"
 	"github.com/neermitt/opsos/pkg/utils"
 )
 
-func NewKindKubeConfigProvider(_ *config.Configuration) plugins.KubeConfigProvider {
+func NewKindKubeConfigProvider(_ *v1.ConfigSpec) plugins.KubeConfigProvider {
 	return &kindKubeConfigProvider{}
 }
 
@@ -23,8 +25,18 @@ func init() {
 type kindKubeConfigProvider struct {
 }
 
-func (k *kindKubeConfigProvider) ExportKubeConfig(ctx context.Context, clusterName string, kubeConfigPath string) error {
-	err := exportKindKubeConfigRaw(ctx, clusterName, kubeConfigPath)
+func (k *kindKubeConfigProvider) ExportKubeConfig(ctx context.Context, stk *stack.Stack, kubeConfigPath string) error {
+	conf := config.GetConfig(ctx)
+	var kindConfig Config
+	err := utils.FromMap(conf.Providers[ComponentType], &kindConfig)
+	if err != nil {
+		return err
+	}
+	clusterName, err := utils.ProcessTemplate(kindConfig.ClusterNamePattern, stk.Vars)
+	if err != nil {
+		return err
+	}
+	err = exportKindKubeConfigRaw(ctx, clusterName, kubeConfigPath)
 	if err != nil {
 		return err
 	}

@@ -4,14 +4,16 @@ import (
 	"context"
 	"fmt"
 
+	v1 "github.com/neermitt/opsos/api/v1"
 	"github.com/neermitt/opsos/pkg/config"
+	"github.com/neermitt/opsos/pkg/stack"
 )
 
 type KubeConfigProvider interface {
-	ExportKubeConfig(ctx context.Context, clusterName string, kubeConfigPath string) error
+	ExportKubeConfig(ctx context.Context, stk *stack.Stack, kubeConfigPath string) error
 }
 
-type KubeConfigProviderFactory func(conf *config.Configuration) KubeConfigProvider
+type KubeConfigProviderFactory func(conf *v1.ConfigSpec) KubeConfigProvider
 
 var kubeConfigProviderFactoryMap map[string]KubeConfigProviderFactory
 
@@ -31,10 +33,10 @@ func GetKubeConfigProvider(ctx context.Context, name string) (KubeConfigProvider
 	return pf(config.GetConfig(ctx)), ok
 }
 
-func GetKubeConfig(ctx context.Context, provider string, clusterName string, kubeconfigPath string) error {
+func GetKubeConfig(ctx context.Context, provider string, stk *stack.Stack, kubeConfigPath string) error {
 	kubeConfigProvider, found := GetKubeConfigProvider(ctx, provider)
 	if !found {
 		return fmt.Errorf("%s kube config provider is not configured", provider)
 	}
-	return kubeConfigProvider.ExportKubeConfig(ctx, clusterName, kubeconfigPath)
+	return kubeConfigProvider.ExportKubeConfig(ctx, stk, kubeConfigPath)
 }

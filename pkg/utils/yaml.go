@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"io"
 
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 // ConvertToYAML converts the provided value to a YAML string
