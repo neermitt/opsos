@@ -46,4 +46,10 @@ terraform/test2: build
 	# ./build/opsos component init terraform infra/account-map
 	./build/opsos stack init orgs/cp/tenant2/dev/us-east-2
 
+terraform/test-kind: build
+	./build/opsos terraform plan orgs/cp/tenant2/dev/us-east-2 infra/k8s
+	./build/opsos terraform apply orgs/cp/tenant2/dev/us-east-2 infra/k8s --use-plan
+	./build/opsos helmfile apply orgs/cp/tenant2/dev/us-east-2 echo-server
+
+
 .PHONY: lint get build deps version testacc

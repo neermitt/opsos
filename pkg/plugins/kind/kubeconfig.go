@@ -4,18 +4,18 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/neermitt/opsos/pkg/stack"
 	"os"
 	"strings"
 
 	v1 "github.com/neermitt/opsos/api/v1"
 	"github.com/neermitt/opsos/pkg/config"
 	"github.com/neermitt/opsos/pkg/plugins"
+	"github.com/neermitt/opsos/pkg/stack"
 	"github.com/neermitt/opsos/pkg/utils"
 )
 
-func NewKindKubeConfigProvider(_ *v1.ConfigSpec) plugins.KubeConfigProvider {
-	return &kindKubeConfigProvider{}
+func NewKindKubeConfigProvider(_ *v1.ConfigSpec) (plugins.KubeConfigProvider, error) {
+	return &kindKubeConfigProvider{}, nil
 }
 
 func init() {
@@ -25,7 +25,7 @@ func init() {
 type kindKubeConfigProvider struct {
 }
 
-func (k *kindKubeConfigProvider) ExportKubeConfig(ctx context.Context, stk *stack.Stack, kubeConfigPath string) error {
+func (k *kindKubeConfigProvider) ExportKubeConfig(ctx context.Context, stk *stack.Stack, providerStackSettings map[string]any, kubeConfigPath string) error {
 	conf := config.GetConfig(ctx)
 	var kindConfig Config
 	err := utils.FromMap(conf.Providers[ComponentType], &kindConfig)

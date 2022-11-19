@@ -11,6 +11,8 @@ import:
   - catalog/helmfile/echo-server
   - catalog/helmfile/infra-server
   - catalog/helmfile/infra-server-override
+  - catalog/terraform/kind-k8s
+  - catalog/terraform/single-node-kind-k8s
 
 components:
   terraform:

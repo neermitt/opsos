@@ -3,6 +3,7 @@ package helmfile
 import (
 	"context"
 	"fmt"
+	"log"
 	"path"
 	"strings"
 
@@ -43,11 +44,8 @@ func ExecHelmfileCommand(ctx context.Context, command string, stk *stack.Stack, 
 	if !found {
 		return fmt.Errorf("k8s settings not found for component %[2]s in stack %[1]s", stackName, component)
 	}
-	k8sProvider, found := k8sSettings["provider"].(string)
-	if !found {
-		return fmt.Errorf("k8s settings for provider not found for component %[2]s in stack %[1]s", stackName, component)
-	}
-	if err := plugins.GetKubeConfig(ctx, k8sProvider, stk, kubeConfigPath); err != nil {
+
+	if err := plugins.GetKubeConfig(ctx, k8sSettings, stk, component.Name, kubeConfigPath); err != nil {
 		return err
 	}
 
@@ -57,8 +55,7 @@ func ExecHelmfileCommand(ctx context.Context, command string, stk *stack.Stack, 
 	varFile := constructHelmfileComponentVarfileName(stk, component.Name)
 	varFilePath := constructHelmfileComponentVarfilePath(stk, workingDir, component.Name)
 
-	fmt.Println("Writing the variables to file:")
-	fmt.Println(varFilePath)
+	log.Printf("[INFO] Writing the variables to file: %[1]s", varFilePath)
 
 	if !dryRun {
 		err = utils.PrintOrWriteToFile("yaml", varFilePath, info.Vars, 0644)
