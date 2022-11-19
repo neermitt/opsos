@@ -51,6 +51,11 @@ func TestConfigRead(t *testing.T) {
 					"cluster_name_pattern": "{{.namespace}}-{{.tenant}}-{{.environment}}-{{.stage}}",
 				},
 			},
+			Logs: v1.LogSpec{
+				Level: stringPtr("debug"),
+				JSON:  false,
+				File:  nil,
+			},
 		},
 	}, component)
 }
