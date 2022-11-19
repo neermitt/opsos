@@ -5,6 +5,15 @@ metadata:
   description: OPSOS Test Configuration
 spec:
   base_path: .
+  stacks:
+    base_path: stacks
+    included_paths:
+      - "orgs/**/*"
+    excluded_paths:
+      - "**/_defaults.yaml"
+    name_pattern: "{{.tenant}}-{{.environment}}-{{.stage}}"
+  logs:
+    level: debug
   helmfile:
     base_path: components/helmfile
     kubeconfig_path: /dev/shm
@@ -16,10 +25,4 @@ spec:
     auto_generate_backend_file: false
   kind:
     cluster_name_pattern: "{{.namespace}}-{{.tenant}}-{{.environment}}-{{.stage}}"
-  stacks:
-    base_path: stacks
-    included_paths:
-      - "orgs/**/*"
-    excluded_paths:
-      - "**/_defaults.yaml"
-    name_pattern: "{{.tenant}}-{{.environment}}-{{.stage}}"
+

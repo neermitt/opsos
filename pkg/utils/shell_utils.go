@@ -2,10 +2,12 @@ package utils
 
 import (
 	"context"
-	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/exec"
+
+	"github.com/neermitt/opsos/pkg/logging"
 )
 
 type ExecOptions struct {
@@ -27,7 +29,7 @@ func ExecuteShellCommand(ctx context.Context, command string, args []string, opt
 	}
 	cmd.Stderr = os.Stderr
 
-	fmt.Println(cmd.String())
+	log.Printf("[TRACE] Executing command: %s", logging.Indent(logging.Indent(cmd.String())))
 
 	if options.DryRun {
 		return nil

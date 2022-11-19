@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/neermitt/opsos/pkg/config"
+	"github.com/neermitt/opsos/pkg/logging"
 	"github.com/spf13/cobra"
 )
 
@@ -24,6 +25,7 @@ var RootCmd = &cobra.Command{
 		}
 
 		cmd.SetContext(config.SetConfig(cmd.Context(), conf))
+		logging.InitLogger(*conf)
 		return nil
 	},
 }
@@ -31,6 +33,7 @@ var RootCmd = &cobra.Command{
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the RootCmd.
 func Execute() error {
+	defer logging.PanicHandler()
 	return RootCmd.Execute()
 }
 

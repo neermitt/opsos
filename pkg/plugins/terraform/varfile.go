@@ -2,9 +2,10 @@ package terraform
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"path"
 
+	"github.com/neermitt/opsos/pkg/logging"
 	"github.com/neermitt/opsos/pkg/stack"
 	"github.com/neermitt/opsos/pkg/utils"
 )
@@ -17,7 +18,8 @@ func GenerateVarFileFile(ctx context.Context, format string) error {
 	// Write varfile to file
 	var varfilePath = path.Join(execOptions.WorkingDirectory, terraformOptions.VarFile)
 
-	fmt.Printf("Writing the vars to file:\n%s\n", varfilePath)
+	log.Printf("[INFO] (terraform) Writing the vars to file: %s", logging.Indent(varfilePath))
+
 	if execOptions.DryRun {
 		return nil
 	}

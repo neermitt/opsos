@@ -4,10 +4,12 @@ go 1.19
 
 require (
 	github.com/bmatcuk/doublestar/v4 v4.2.0
+	github.com/coreos/pkg v0.0.0-20220810130054-c7d1c02cb6cf
 	github.com/fatih/color v1.13.0
 	github.com/go-playground/validator v9.31.0+incompatible
 	github.com/goburrow/cache v0.1.4
 	github.com/hashicorp/go-getter v1.6.2
+	github.com/hashicorp/go-hclog v1.2.0
 	github.com/hashicorp/hcl/v2 v2.14.1
 	github.com/imdario/mergo v0.3.13
 	github.com/json-iterator/go v1.1.12
@@ -20,8 +22,6 @@ require (
 	github.com/spf13/viper v1.13.0
 	github.com/stretchr/testify v1.8.0
 	github.com/zclconf/go-cty v1.11.1
-	go.uber.org/zap v1.23.0
-	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -34,6 +34,7 @@ require (
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
 	github.com/aws/aws-sdk-go v1.15.78 // indirect
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d // indirect
+	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-playground/locales v0.14.0 // indirect
@@ -69,8 +70,6 @@ require (
 	github.com/subosito/gotenv v1.4.1 // indirect
 	github.com/ulikunitz/xz v0.5.8 // indirect
 	go.opencensus.io v0.23.0 // indirect
-	go.uber.org/atomic v1.10.0 // indirect
-	go.uber.org/multierr v1.8.0 // indirect
 	golang.org/x/net v0.0.0-20220909164309-bea034e7d591 // indirect
 	golang.org/x/oauth2 v0.0.0-20220909003341-f21342109be1 // indirect
 	golang.org/x/sys v0.1.0 // indirect
@@ -83,4 +82,5 @@ require (
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 )

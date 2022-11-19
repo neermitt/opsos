@@ -1,16 +1,17 @@
-package v1_test
+package config_test
 
 import (
 	"testing"
 
 	"github.com/neermitt/opsos/api/common"
 	v1 "github.com/neermitt/opsos/api/v1"
+	"github.com/neermitt/opsos/pkg/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestConfigRead(t *testing.T) {
-	component, err := v1.ReadAndMergeConfigsFromDirs([]string{"../.."})
+	component, err := config.ReadAndMergeConfigsFromDirs([]string{"../.."})
 	require.NoError(t, err)
 
 	assert.Equal(t, &v1.Config{
