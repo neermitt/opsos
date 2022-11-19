@@ -35,3 +35,8 @@ func yamlFormatter(w io.Writer, data interface{}) error {
 
 	return nil
 }
+
+func DecodeYaml(reader io.Reader, out any) error {
+	decoder := yaml.NewDecoder(reader)
+	return decoder.Decode(out)
+}

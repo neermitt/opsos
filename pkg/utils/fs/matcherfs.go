@@ -14,6 +14,17 @@ type Matcher interface {
 	Match(s string) bool
 }
 
+type allMatcher struct {
+}
+
+func (am allMatcher) Match(_ string) bool {
+	return true
+}
+
+func NewAllMatcher() Matcher {
+	return allMatcher{}
+}
+
 func NewMatcherFs(source afero.Fs, m Matcher) afero.Fs {
 	return &MatcherFs{source: source, m: m}
 }
@@ -232,4 +243,19 @@ func (mfs *MatcherFs) Stat(name string) (fs.FileInfo, error) {
 		return nil, err
 	}
 	return mfs.source.Stat(name)
+}
+
+func IncludeExcludeMatcher(includedPaths []string, excludedPaths []string) Matcher {
+	includeMatcher := GlobMatchers(includedPaths)
+	excludedMatcher := GlobMatchers(excludedPaths)
+
+	return And(includeMatcher, Not(excludedMatcher))
+}
+
+func GlobMatchers(paths []string) Matcher {
+	matchers := make([]Matcher, 0)
+	for _, p := range paths {
+		matchers = append(matchers, Glob(p))
+	}
+	return Or(matchers...)
 }

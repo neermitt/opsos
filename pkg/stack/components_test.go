@@ -1,6 +1,7 @@
-package components
+package stack
 
 import (
+	"github.com/neermitt/opsos/pkg/stack/schema"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -13,7 +14,7 @@ func TestProcessComponentConfigs(t *testing.T) {
 	backendTypeAzurerm := "azurerm"
 	backendTypeStatic := "static"
 
-	baseConfig := Config{
+	baseConfig := schema.Config{
 		Vars: map[string]any{
 			"key1": "val1",
 			"key2": "val2",
@@ -63,10 +64,10 @@ func TestProcessComponentConfigs(t *testing.T) {
 	terraformWorkspacePattern := "{{.tenant}}-{{.environment}}-{{.stage}}-{{.component}}"
 
 	commandOverride := "/usr/local/bin/terraform"
-	componentsConfigMap := map[string]ConfigWithMetadata{
+	componentsConfigMap := map[string]schema.ConfigWithMetadata{
 		componentNoOverride: {},
 		componentOverrides: {
-			Config: Config{
+			Config: schema.Config{
 				Command: &commandOverride,
 				Vars: map[string]any{
 					"key2": "val-override-2",
@@ -96,7 +97,7 @@ func TestProcessComponentConfigs(t *testing.T) {
 			},
 		},
 		componentOverrideComponent1: {
-			Config: Config{
+			Config: schema.Config{
 				Component: &componentOverrides,
 				Vars: map[string]any{
 					"key3": "val-override-3",
@@ -109,7 +110,7 @@ func TestProcessComponentConfigs(t *testing.T) {
 			},
 		},
 		"OverrideComponent2": {
-			Config: Config{
+			Config: schema.Config{
 				Component: &componentOverrideComponent1,
 				Vars: map[string]any{
 					"key4": "val-override-4",
@@ -120,12 +121,12 @@ func TestProcessComponentConfigs(t *testing.T) {
 			},
 		},
 		"metadata/component": {
-			Metadata: &Metadata{
+			Metadata: &schema.Metadata{
 				Component: &componentInfraVPC,
 			},
 		},
 		componentTestComponent: {
-			Config: Config{
+			Config: schema.Config{
 				Vars: map[string]any{
 					"enabled": true,
 				},
@@ -140,12 +141,12 @@ func TestProcessComponentConfigs(t *testing.T) {
 					},
 				},
 			},
-			Metadata: &Metadata{
+			Metadata: &schema.Metadata{
 				Type: &componentMetadataTypeReal,
 			},
 		},
 		componentTestComponentOverride: {
-			Config: Config{
+			Config: schema.Config{
 				Component: &componentTestComponent,
 				Vars:      map[string]any{},
 				Envs: map[string]string{
@@ -168,12 +169,12 @@ func TestProcessComponentConfigs(t *testing.T) {
 					},
 				},
 			},
-			Metadata: &Metadata{
+			Metadata: &schema.Metadata{
 				TerraformWorkspace: &terraformWorkspaceOverride,
 			},
 		},
 		"test/test-component-override-2": {
-			Config: Config{
+			Config: schema.Config{
 				Component: &componentTestComponentOverride,
 				Vars:      map[string]any{},
 				Envs: map[string]string{
@@ -197,32 +198,32 @@ func TestProcessComponentConfigs(t *testing.T) {
 					},
 				},
 			},
-			Metadata: &Metadata{
+			Metadata: &schema.Metadata{
 				TerraformWorkspacePattern: &terraformWorkspacePattern,
 			},
 		},
 		"mixin/test-1": {
-			Config: Config{
+			Config: schema.Config{
 				Vars: map[string]any{
 					"service_1_name": "mixin-1",
 				},
 			},
-			Metadata: &Metadata{
+			Metadata: &schema.Metadata{
 				Type: &componentMetadataTypeAbstract,
 			},
 		},
 		"mixin/test-2": {
-			Config: Config{
+			Config: schema.Config{
 				Vars: map[string]any{
 					"service_1_name": "mixin-2",
 				},
 			},
-			Metadata: &Metadata{
+			Metadata: &schema.Metadata{
 				Type: &componentMetadataTypeAbstract,
 			},
 		},
 		"metadata/inherit-1": {
-			Metadata: &Metadata{
+			Metadata: &schema.Metadata{
 				Component: &componentTestComponent,
 				Inherits: []string{
 					componentTestComponentOverride,
@@ -237,7 +238,7 @@ func TestProcessComponentConfigs(t *testing.T) {
 	tests := []struct {
 		componentName         string
 		expectedError         bool
-		expectedComponentInfo *ConfigWithMetadata
+		expectedComponentInfo *schema.ConfigWithMetadata
 	}{
 		{
 			componentName: "MissingComponent",
@@ -245,8 +246,8 @@ func TestProcessComponentConfigs(t *testing.T) {
 		},
 		{
 			componentName: componentNoOverride,
-			expectedComponentInfo: &ConfigWithMetadata{
-				Config: Config{
+			expectedComponentInfo: &schema.ConfigWithMetadata{
+				Config: schema.Config{
 					Component: &componentNoOverride,
 					Vars: map[string]any{
 						"key1": "val1",
@@ -303,8 +304,8 @@ func TestProcessComponentConfigs(t *testing.T) {
 		},
 		{
 			componentName: componentOverrides,
-			expectedComponentInfo: &ConfigWithMetadata{
-				Config: Config{
+			expectedComponentInfo: &schema.ConfigWithMetadata{
+				Config: schema.Config{
 					Command:   &commandOverride,
 					Component: &componentOverrides,
 					Vars: map[string]any{
@@ -369,8 +370,8 @@ func TestProcessComponentConfigs(t *testing.T) {
 		},
 		{
 			componentName: componentOverrideComponent1,
-			expectedComponentInfo: &ConfigWithMetadata{
-				Config: Config{
+			expectedComponentInfo: &schema.ConfigWithMetadata{
+				Config: schema.Config{
 					Command:   &commandOverride,
 					Component: &componentOverrides,
 					Vars: map[string]any{
@@ -437,8 +438,8 @@ func TestProcessComponentConfigs(t *testing.T) {
 		},
 		{
 			componentName: "OverrideComponent2",
-			expectedComponentInfo: &ConfigWithMetadata{
-				Config: Config{
+			expectedComponentInfo: &schema.ConfigWithMetadata{
+				Config: schema.Config{
 					Command:   &commandOverride,
 					Component: &componentOverrides,
 					Vars: map[string]any{
@@ -505,8 +506,8 @@ func TestProcessComponentConfigs(t *testing.T) {
 		},
 		{
 			componentName: "metadata/component",
-			expectedComponentInfo: &ConfigWithMetadata{
-				Config: Config{
+			expectedComponentInfo: &schema.ConfigWithMetadata{
+				Config: schema.Config{
 					Component: &componentInfraVPC,
 					Vars: map[string]any{
 						"key1": "val1",
@@ -559,15 +560,15 @@ func TestProcessComponentConfigs(t *testing.T) {
 						"vault":           nil,
 					},
 				},
-				Metadata: &Metadata{
+				Metadata: &schema.Metadata{
 					Component: &componentInfraVPC,
 				},
 			},
 		},
 		{
 			componentName: "metadata/inherit-1",
-			expectedComponentInfo: &ConfigWithMetadata{
-				Config: Config{
+			expectedComponentInfo: &schema.ConfigWithMetadata{
+				Config: schema.Config{
 					Component: &componentTestComponent,
 					Vars: map[string]any{
 						"enabled":        true,
@@ -638,7 +639,7 @@ func TestProcessComponentConfigs(t *testing.T) {
 						},
 					},
 				},
-				Metadata: &Metadata{
+				Metadata: &schema.Metadata{
 					Component: &componentTestComponent,
 					Inherits: []string{
 						componentTestComponentOverride,
@@ -655,7 +656,7 @@ func TestProcessComponentConfigs(t *testing.T) {
 		t.Run(tc.componentName, func(t *testing.T) {
 			testCase := tc
 			t.Parallel()
-			componentInfo, err := ProcessComponentConfigs("testStack", baseConfig, componentsConfigMap, testCase.componentName)
+			componentInfo, err := processComponentConfigs("testStack", baseConfig, componentsConfigMap, testCase.componentName)
 			if testCase.expectedError {
 				require.Error(t, err)
 			} else {
