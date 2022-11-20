@@ -1,0 +1,7 @@
+components:
+  terraform:
+    "infra/kind-k8s":
+      vars:
+        enabled: true
+      metadata:
+        type: abstract
