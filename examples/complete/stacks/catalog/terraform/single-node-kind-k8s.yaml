@@ -1,0 +1,8 @@
+components:
+  terraform:
+    "infra/k8s":
+      component: infra/kind-k8s
+      vars:
+        nodes:
+          - role: control-plane
+            image: kindest/node:v1.25.3

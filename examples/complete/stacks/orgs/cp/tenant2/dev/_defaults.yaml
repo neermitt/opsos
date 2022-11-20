@@ -4,4 +4,7 @@ import:
 
 settings:
   k8s:
-    provider: kind
+    provider: terraform
+    terraform:
+      component: infra/k8s
+      ref: output.kubeconfig_with_ip

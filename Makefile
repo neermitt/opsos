@@ -31,4 +31,25 @@ deps:
 testacc: get
 	go test $(TEST) -v $(TESTARGS) -timeout 2m
 
+## Terraform test
+terraform/test: build
+	./build/opsos terraform plan orgs/cp/tenant2/dev/us-east-2 top-level-component1
+	./build/opsos terraform apply orgs/cp/tenant2/dev/us-east-2 top-level-component1 --use-plan
+	./build/opsos terraform refresh orgs/cp/tenant2/dev/us-east-2 top-level-component1
+	./build/opsos helmfile apply orgs/cp/tenant2/dev/us-east-2 echo-server
+	./build/opsos terraform plan orgs/cp/tenant2/dev/us-east-2 top-level-component1	-- -destroy
+	./build/opsos terraform apply orgs/cp/tenant2/dev/us-east-2 top-level-component1 --use-plan
+	./build/opsos terraform init orgs/cp/tenant2/dev/us-east-2 top-level-component1
+	./build/opsos terraform clean orgs/cp/tenant2/dev/us-east-2 top-level-component1
+
+terraform/test2: build
+	# ./build/opsos component init terraform infra/account-map
+	./build/opsos stack init orgs/cp/tenant2/dev/us-east-2
+
+terraform/test-kind: build
+	./build/opsos terraform plan orgs/cp/tenant2/dev/us-east-2 infra/k8s
+	./build/opsos terraform apply orgs/cp/tenant2/dev/us-east-2 infra/k8s --use-plan
+	./build/opsos helmfile apply orgs/cp/tenant2/dev/us-east-2 echo-server
+
+
 .PHONY: lint get build deps version testacc

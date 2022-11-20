@@ -3,6 +3,7 @@ package terraform
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"path"
 
@@ -60,7 +61,7 @@ func GenerateBackendFile(ctx context.Context, format string) error {
 	// Write backend config to file
 	var backendFilePath = path.Join(execOptions.WorkingDirectory, constructBackendFileName(format))
 
-	fmt.Printf("Writing the backend config to file:\n%s\n", backendFilePath)
+	log.Printf("[INFO] (terraform) Writing the backend config to file: %s", backendFilePath)
 	if execOptions.DryRun {
 		return nil
 	}

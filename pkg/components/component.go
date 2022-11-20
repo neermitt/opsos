@@ -5,6 +5,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -27,6 +29,12 @@ type PrepareComponentOptions struct {
 }
 
 func PrepareComponent(ctx context.Context, componentPath string, dstDir string, options PrepareComponentOptions) error {
+	log.Printf("[INFO] Begins Init component %s", componentPath)
+
+	defer func() {
+		log.Printf("[INFO] Ends Init component %s", componentPath)
+	}()
+
 	componentFs := afero.NewBasePathFs(afero.NewOsFs(), componentPath)
 
 	if exists, err := afero.Exists(componentFs, componentConfigFileName); err != nil {
@@ -39,12 +47,16 @@ func PrepareComponent(ctx context.Context, componentPath string, dstDir string, 
 	if err != nil {
 		return err
 	}
-	component, err := v1.ReadComponent(f)
+	component, err := ReadComponent(f)
 	if err != nil {
 		return err
 	}
 
-	return PrepareComponentBySpec(ctx, componentPath, dstDir, component.Spec, options)
+	err = PrepareComponentBySpec(ctx, componentPath, dstDir, component.Spec, options)
+	if err != nil {
+		log.Printf("[Error] Init component failed %s, error :%v", componentPath, err)
+	}
+	return err
 }
 
 func PrepareComponentBySpec(ctx context.Context, componentPath string, dstDir string, spec v1.ComponentSpec, options PrepareComponentOptions) error {
@@ -79,7 +91,7 @@ func copyFromSource(ctx context.Context, destDir string, source v1.ComponentSour
 	} else {
 		uri = source.Uri
 	}
-
+	log.Printf("[INFO] Copying from source %s", uri)
 	matcher := fs.IncludeExcludeMatcher(source.IncludedPaths, source.ExcludedPaths)
 
 	return downloadAndCopy(ctx, getter.ClientModeDir, uri, ".", destDir, matcher, options)
@@ -165,4 +177,25 @@ func downloadAndCopy(ctx context.Context, mode getter.ClientMode, url string, su
 			return copy.Deep
 		},
 	})
+}
+
+func ReadComponent(r io.Reader) (*v1.Component, error) {
+	var component v1.Component
+
+	err := utils.DecodeYaml(r, &component)
+	if err != nil {
+		return nil, err
+	}
+	err = validateComponent(component)
+	if err != nil {
+		return nil, err
+	}
+	return &component, err
+}
+
+func validateComponent(component v1.Component) error {
+	if component.ApiVersion != "opsos/v1" || component.Kind != "Component" {
+		return fmt.Errorf("no resource found of type %s/%s", component.ApiVersion, component.Kind)
+	}
+	return nil
 }

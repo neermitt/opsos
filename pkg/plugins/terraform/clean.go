@@ -2,7 +2,7 @@ package terraform
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"os"
 
 	"github.com/neermitt/opsos/pkg/config"
@@ -14,17 +14,17 @@ func Clean(ctx context.Context, clearDataDir bool) error {
 	execOptions := utils.GetExecOptions(ctx)
 
 	fs := afero.NewBasePathFs(afero.NewOsFs(), execOptions.WorkingDirectory)
-	fmt.Println("Deleting '.terraform' folder")
+	log.Println("[INFO] (terraform) Deleting '.terraform' folder")
 	if err := fs.RemoveAll(".terraform"); err != nil {
 		return err
 	}
 
-	fmt.Println("Deleting '.terraform.lock.hcl' file")
+	log.Printf("[INFO] (terraform) Deleting lock file %s", ".terraform.lock.hcl")
 	if err := fs.RemoveAll(".terraform.lock.hcl"); err != nil {
 		return err
 	}
 
-	fmt.Printf("Deleting terraform varfile: %s\n", "*.terraform.tfvars*")
+	log.Printf("[INFO] (terraform) Deleting terraform varfile: %s", "*.terraform.tfvars*")
 	if err := removeAllFiles(fs, "*.terraform.tfvars*"); err != nil {
 		return err
 	}
@@ -34,9 +34,15 @@ func Clean(ctx context.Context, clearDataDir bool) error {
 	}
 
 	conf := config.GetConfig(ctx)
+	var terraformConfig Config
+	err := utils.FromMap(conf.Providers[ComponentType], &terraformConfig)
+	if err != nil {
+		return err
+	}
+
 	// If `auto_generate_backend_file` is `true` (we are auto-generating backend files), remove `backend.tf.json`
-	if conf.Components.Terraform.AutoGenerateBackendFile {
-		fmt.Println("Deleting 'backend.tf*' file")
+	if terraformConfig.AutoGenerateBackendFile {
+		log.Printf("[INFO] (terraform) Deleting backend file: %s", "backend.tf*")
 		if err := removeAllFiles(fs, "backend.tf*"); err != nil {
 			return err
 		}
@@ -45,8 +51,8 @@ func Clean(ctx context.Context, clearDataDir bool) error {
 	tfDataDir := os.Getenv("TF_DATA_DIR")
 	if len(tfDataDir) > 0 && tfDataDir != "." && tfDataDir != "/" && tfDataDir != "./" {
 		if clearDataDir {
-			fmt.Printf("Found ENV var TF_DATA_DIR=%s", tfDataDir)
-			fmt.Printf("Deleting folder '%s'\n", tfDataDir)
+			log.Printf("[INFO] (terraform) Found ENV var: %s=%s", "TF_DATA_DIR", tfDataDir)
+			log.Printf("[INFO] (terraform) Deleting folder '%s'", tfDataDir)
 			if err := fs.RemoveAll(tfDataDir); err != nil {
 				return err
 			}
@@ -63,7 +69,7 @@ func CleanPlanFile(ctx context.Context) error {
 
 func cleanPlanFileFromComponentDir(componentDir string) error {
 	fs := afero.NewBasePathFs(afero.NewOsFs(), componentDir)
-	fmt.Printf("Deleting terraform plan: %s\n", "*.planfile")
+	log.Printf("[INFO] (terraform) Deleting terraform plan: %s", "*.planfile")
 	return removeAllFiles(fs, "*.planfile")
 }
 

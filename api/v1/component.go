@@ -1,11 +1,7 @@
 package v1
 
 import (
-	"fmt"
-	"io"
-
 	"github.com/neermitt/opsos/api/common"
-	"github.com/neermitt/opsos/pkg/utils"
 )
 
 type ComponentSource struct {
@@ -29,25 +25,4 @@ type ComponentSpec struct {
 type Component struct {
 	common.Object `yaml:",inline" json:",inline"`
 	Spec          ComponentSpec `yaml:"spec" json:"spec"`
-}
-
-func ReadComponent(r io.Reader) (*Component, error) {
-	var component Component
-
-	err := utils.DecodeYaml(r, &component)
-	if err != nil {
-		return nil, err
-	}
-	err = validateComponent(component)
-	if err != nil {
-		return nil, err
-	}
-	return &component, err
-}
-
-func validateComponent(component Component) error {
-	if component.ApiVersion != "opsos/v1" || component.Kind != "Component" {
-		return fmt.Errorf("no resource found of type %s/%s", component.ApiVersion, component.Kind)
-	}
-	return nil
 }

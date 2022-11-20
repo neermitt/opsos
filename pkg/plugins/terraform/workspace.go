@@ -3,6 +3,7 @@ package terraform
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/neermitt/opsos/pkg/stack"
@@ -30,6 +31,7 @@ func ConstructWorkspaceName(stack *stack.Stack, componentName string, config sta
 
 func SelectOrCreateWorkspace(ctx context.Context) error {
 	terraformSettings := GetTerraformSettings(ctx)
+	log.Printf("[DEBUG] (terraform) Set workspacename %s", terraformSettings.WorkspaceName)
 	if err := ExecuteCommand(ctx, []string{"workspace", "select", terraformSettings.WorkspaceName}); err != nil {
 		return ExecuteCommand(ctx, []string{"workspace", "new", terraformSettings.WorkspaceName})
 	}

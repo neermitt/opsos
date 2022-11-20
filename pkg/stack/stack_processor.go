@@ -12,7 +12,7 @@ import (
 
 	"github.com/goburrow/cache"
 	"github.com/mitchellh/mapstructure"
-	"github.com/neermitt/opsos/pkg/config"
+	v1 "github.com/neermitt/opsos/api/v1"
 	"github.com/neermitt/opsos/pkg/merge"
 	"github.com/neermitt/opsos/pkg/stack/schema"
 	"github.com/neermitt/opsos/pkg/utils/fs"
@@ -57,8 +57,8 @@ func NewStackProcessor(source afero.Fs, includePaths []string, excludePaths []st
 	return sp
 }
 
-func NewStackProcessorFromConfig(conf *config.Configuration) (StackProcessor, error) {
-	stacksBasePath := path.Join(conf.BasePath, conf.Stacks.BasePath)
+func NewStackProcessorFromConfig(conf *v1.ConfigSpec) (StackProcessor, error) {
+	stacksBasePath := path.Join(*conf.BasePath, *conf.Stacks.BasePath)
 	stacksBaseAbsPath, err := filepath.Abs(stacksBasePath)
 	if err != nil {
 		return nil, nil
@@ -66,7 +66,7 @@ func NewStackProcessorFromConfig(conf *config.Configuration) (StackProcessor, er
 
 	stackFS := afero.NewBasePathFs(afero.NewOsFs(), stacksBaseAbsPath)
 
-	return NewStackProcessor(stackFS, conf.Stacks.IncludedPaths, conf.Stacks.ExcludedPaths, conf.Stacks.NamePattern), nil
+	return NewStackProcessor(stackFS, conf.Stacks.IncludedPaths, conf.Stacks.ExcludedPaths, *conf.Stacks.NamePattern), nil
 }
 
 type stackProcessor struct {

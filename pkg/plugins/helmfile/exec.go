@@ -3,6 +3,7 @@ package helmfile
 import (
 	"context"
 	"fmt"
+	"log"
 	"path"
 	"strings"
 
@@ -27,8 +28,14 @@ func ExecHelmfileCommand(ctx context.Context, command string, stk *stack.Stack, 
 
 	// Export KubeConfig
 	conf := config.GetConfig(ctx)
-	kubeconfigPath := fmt.Sprintf("%s/%s-kubecfg", conf.Components.Helmfile.KubeconfigPath, stk.Name)
-	clusterName, err := utils.ProcessTemplate(conf.Components.Helmfile.ClusterNamePattern, stk.Vars)
+
+	var helmfileConfig Config
+	err := utils.FromMap(conf.Providers[ComponentType], &helmfileConfig)
+	if err != nil {
+		return err
+	}
+
+	kubeConfigPath := fmt.Sprintf("%s/%s-kubecfg", helmfileConfig.KubeconfigPath, stk.Name)
 	if err != nil {
 		return err
 	}
@@ -37,11 +44,8 @@ func ExecHelmfileCommand(ctx context.Context, command string, stk *stack.Stack, 
 	if !found {
 		return fmt.Errorf("k8s settings not found for component %[2]s in stack %[1]s", stackName, component)
 	}
-	k8sProvider, found := k8sSettings["provider"].(string)
-	if !found {
-		return fmt.Errorf("k8s settings for provider not found for component %[2]s in stack %[1]s", stackName, component)
-	}
-	if err := plugins.GetKubeConfig(ctx, k8sProvider, clusterName, kubeconfigPath); err != nil {
+
+	if err := plugins.GetKubeConfig(ctx, k8sSettings, stk, component.Name, kubeConfigPath); err != nil {
 		return err
 	}
 
@@ -51,8 +55,7 @@ func ExecHelmfileCommand(ctx context.Context, command string, stk *stack.Stack, 
 	varFile := constructHelmfileComponentVarfileName(stk, component.Name)
 	varFilePath := constructHelmfileComponentVarfilePath(stk, workingDir, component.Name)
 
-	fmt.Println("Writing the variables to file:")
-	fmt.Println(varFilePath)
+	log.Printf("[INFO] Writing the variables to file: %[1]s", varFilePath)
 
 	if !dryRun {
 		err = utils.PrintOrWriteToFile("yaml", varFilePath, info.Vars, 0644)
@@ -72,9 +75,9 @@ func ExecHelmfileCommand(ctx context.Context, command string, stk *stack.Stack, 
 
 	cmdEnv := append([]string{},
 		fmt.Sprintf("STACK=%s", stk.Name),
-		fmt.Sprintf("KUBECONFIG=%s", kubeconfigPath),
+		fmt.Sprintf("KUBECONFIG=%s", kubeConfigPath),
 	)
-	for k, v := range conf.Components.Helmfile.Envs {
+	for k, v := range helmfileConfig.Envs {
 		pv, err := utils.ProcessTemplate(v, stk.Vars)
 		if err != nil {
 			return err
