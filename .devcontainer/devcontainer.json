@@ -1,6 +1,6 @@
 {
 	"name": "opsos",
-	"image": "mcr.microsoft.com/vscode/devcontainers/base:bullseye",
+	"image": "mcr.microsoft.com/vscode/devcontainers/go:1.19-bullseye",
 	"features": {
 		"ghcr.io/devcontainers/features/common-utils:1": {
             "version": "latest"
@@ -15,12 +15,6 @@
         },
         "ghcr.io/devcontainers/features/terraform:1": {
 			"version": "1.2"
-		},
-		"ghcr.io/devcontainers/features/git:1": {
-			"version":"2.30.2"
-		},
-		"ghcr.io/devcontainers/features/go:1": {
-			"version":"1.19"
 		},
 		"ghcr.io/neermitt/devcontainers-features/helmfile:1": {
             "version": "0.146.0"

@@ -20,21 +20,21 @@ func TestMain(m *testing.M) {
 
 func TestStackProcessorNoDependency(t *testing.T) {
 	proc := stack.NewStackProcessor(fs, []string{"orgs/**/*"}, []string{"**/_defaults.yaml"}, "test")
-	s, err := proc.GetStack("orgs/cp/_defaults.yaml", nil)
+	s, err := proc.GetStack("orgs/cp/_defaults.yaml", stack.GetStackOptions{})
 	require.NoError(t, err)
 	assert.NotNil(t, s)
 }
 
 func TestStackProcessorWithoutFileExt(t *testing.T) {
 	proc := stack.NewStackProcessor(fs, []string{"orgs/**/*"}, []string{"**/_defaults.yaml"}, "test")
-	s, err := proc.GetStack("orgs/cp/_defaults", nil)
+	s, err := proc.GetStack("orgs/cp/_defaults", stack.GetStackOptions{})
 	require.NoError(t, err)
 	assert.NotNil(t, s)
 }
 
 func TestStackProcessorSingleDependency(t *testing.T) {
 	proc := stack.NewStackProcessor(fs, []string{"orgs/**/*"}, []string{"**/_defaults.yaml"}, "test")
-	s, err := proc.GetStack("orgs/cp/tenant1/_defaults", nil)
+	s, err := proc.GetStack("orgs/cp/tenant1/_defaults", stack.GetStackOptions{})
 	require.NoError(t, err)
 	assert.NotNil(t, s)
 }
@@ -43,16 +43,16 @@ func TestStackProcessorMultipleFiles(t *testing.T) {
 	proc := stack.NewStackProcessor(fs, []string{"orgs/**/*"}, []string{"**/_defaults.yaml"}, "test")
 	names, err := proc.GetStackNames()
 	require.NoError(t, err)
-	s, err := proc.GetStacks(names)
+	s, err := proc.GetStacks(names, stack.GetStackOptions{})
 	require.NoError(t, err)
 	assert.Len(t, s, 15)
 }
 
 func TestStackProcessorLoadStackWithMixin(t *testing.T) {
 	proc := stack.NewStackProcessor(fs, []string{"orgs/**/*"}, []string{"**/_defaults.yaml"}, "test")
-	s, err := proc.GetStack("orgs/cp/tenant1/dev/us-east-2", &stack.Component{
-		Type: "terraform",
-		Name: "test/test-component-override-3",
+	s, err := proc.GetStack("orgs/cp/tenant1/dev/us-east-2", stack.GetStackOptions{
+		Components:     []string{"test/test-component-override-3"},
+		ComponentTypes: []string{"terraform"},
 	})
 	require.NoError(t, err)
 	assert.Len(t, s.Components, 1)
