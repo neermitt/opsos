@@ -9,12 +9,12 @@ import:
 
 components:
   terraform:
-    # Note that you can name this atmos YAML component anything that fits your needs.
+    # Note that you can name this opsos YAML component anything that fits your needs.
     # For example, it can be named `test/test-component-override-3` or `test-test-component-override-3`
-    # This affects only the `atmos` command you use to provision the component:
+    # This affects only the `opsos` command you use to provision the component:
     # For example:
-    # atmos terraform plan test/test-component-override-3 -s xxx (if you name the YAML component `test/test-component-override-3`)
-    # atmos terraform plan test-test-component-override-3 -s xxx (if you name the YAML component `test-test-component-override-3`)
+    # opsos terraform plan xxx test/test-component-override-3 (if you name the YAML component `test/test-component-override-3`)
+    # opsos terraform plan xxx test-test-component-override-3 (if you name the YAML component `test-test-component-override-3`)
     # The terraform component (terraform code) it points to is defined by using the `metadata.component` attribute
     "test/test-component-override-3":
       settings:
