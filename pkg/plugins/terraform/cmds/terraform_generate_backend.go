@@ -1,8 +1,9 @@
-package cmd
+package cmds
 
 import (
 	"fmt"
-	"github.com/neermitt/opsos/internal/exec"
+
+	"github.com/neermitt/opsos/pkg/plugins/terraform/exec"
 	"github.com/neermitt/opsos/pkg/utils"
 	"github.com/spf13/cobra"
 )

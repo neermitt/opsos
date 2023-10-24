@@ -1,7 +1,7 @@
-package cmd
+package cmds
 
 import (
-	"github.com/neermitt/opsos/internal/exec"
+	"github.com/neermitt/opsos/pkg/plugins/helmfile/exec"
 	"github.com/spf13/cobra"
 )
 

@@ -1,9 +1,9 @@
-package cmd
+package cmds
 
 import (
-	"github.com/neermitt/opsos/internal/exec"
 	"github.com/spf13/cobra"
 
+	"github.com/neermitt/opsos/pkg/plugins/helmfile/exec"
 	_ "github.com/neermitt/opsos/pkg/plugins/kind"
 )
 
@@ -18,6 +18,6 @@ var helmfileCmd = &cobra.Command{
 	Long:  `This command runs helmfile commands`,
 }
 
-func init() {
-	RootCmd.AddCommand(helmfileCmd)
+func InitCommands(parentCmd *cobra.Command) {
+	parentCmd.AddCommand(helmfileCmd)
 }
