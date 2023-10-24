@@ -14,6 +14,5 @@ env: {}
 components:
   terraform:
     vpc:
-      settings:
-        spacelift: "bad"
+      settings: {}
       vars: {}
