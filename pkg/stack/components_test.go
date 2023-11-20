@@ -1,8 +1,9 @@
 package stack
 
 import (
-	"github.com/neermitt/opsos/pkg/stack/schema"
 	"testing"
+
+	"github.com/neermitt/opsos/pkg/stack/schema"
 
 	"github.com/stretchr/testify/require"
 )
@@ -39,7 +40,7 @@ func TestProcessComponentConfigs(t *testing.T) {
 				"resource_group_name":  "rg-terraform-state",
 				"storage_account_name": "staterraformstate",
 				"container_name":       "dev-tfstate",
-				"key":                  "dev.atmos",
+				"key":                  "dev.opsos",
 			},
 			backendTypeRemote: nil,
 			"vault":           nil,
@@ -89,11 +90,6 @@ func TestProcessComponentConfigs(t *testing.T) {
 						"subscription_id": "99999-9999-9999-9999-9999999999",
 					},
 				},
-				Settings: map[string]any{
-					"spacelift": map[string]any{
-						"workspace_enabled": true,
-					},
-				},
 			},
 		},
 		componentOverrideComponent1: {
@@ -135,11 +131,6 @@ func TestProcessComponentConfigs(t *testing.T) {
 					"TEST_ENV_VAR2": "val2",
 					"TEST_ENV_VAR3": "val3",
 				},
-				Settings: map[string]any{
-					"spacelift": map[string]any{
-						"workspace_enabled": true,
-					},
-				},
 			},
 			Metadata: &schema.Metadata{
 				Type: &componentMetadataTypeReal,
@@ -163,11 +154,6 @@ func TestProcessComponentConfigs(t *testing.T) {
 						"val4": nil,
 					},
 				},
-				Settings: map[string]any{
-					"spacelift": map[string]any{
-						"workspace_enabled": true,
-					},
-				},
 			},
 			Metadata: &schema.Metadata{
 				TerraformWorkspace: &terraformWorkspaceOverride,
@@ -189,12 +175,6 @@ func TestProcessComponentConfigs(t *testing.T) {
 						"val2": "5",
 						"val3": 7,
 						"val4": nil,
-					},
-				},
-				Settings: map[string]any{
-					"spacelift": map[string]any{
-						"workspace_enabled":  true,
-						"stack_name_pattern": "{{.tenant}}-{{.environment}}-{{.stage}}-new-component",
 					},
 				},
 			},
@@ -273,7 +253,7 @@ func TestProcessComponentConfigs(t *testing.T) {
 							"resource_group_name":  "rg-terraform-state",
 							"storage_account_name": "staterraformstate",
 							"container_name":       "dev-tfstate",
-							"key":                  "dev.atmos",
+							"key":                  "dev.opsos",
 						},
 						backendTypeRemote: nil,
 						"vault":           nil,
@@ -294,7 +274,7 @@ func TestProcessComponentConfigs(t *testing.T) {
 							"resource_group_name":  "rg-terraform-state",
 							"storage_account_name": "staterraformstate",
 							"container_name":       "dev-tfstate",
-							"key":                  "dev.atmos",
+							"key":                  "dev.opsos",
 						},
 						backendTypeRemote: nil,
 						"vault":           nil,
@@ -334,7 +314,7 @@ func TestProcessComponentConfigs(t *testing.T) {
 							"resource_group_name":  "rg-terraform-state",
 							"storage_account_name": "staterraformstate",
 							"container_name":       "dev-tfstate",
-							"key":                  "dev.atmos",
+							"key":                  "dev.opsos",
 						},
 						backendTypeRemote: nil,
 						"vault":           nil,
@@ -355,15 +335,10 @@ func TestProcessComponentConfigs(t *testing.T) {
 							"resource_group_name":  "rg-terraform-state",
 							"storage_account_name": "staterraformstate",
 							"container_name":       "dev-tfstate",
-							"key":                  "dev.atmos",
+							"key":                  "dev.opsos",
 						},
 						backendTypeRemote: nil,
 						"vault":           nil,
-					},
-					Settings: map[string]any{
-						"spacelift": map[string]any{
-							"workspace_enabled": true,
-						},
 					},
 				},
 			},
@@ -402,7 +377,7 @@ func TestProcessComponentConfigs(t *testing.T) {
 							"resource_group_name":  "rg-terraform-state",
 							"storage_account_name": "staterraformstate",
 							"container_name":       "dev-tfstate",
-							"key":                  "dev.atmos",
+							"key":                  "dev.opsos",
 						},
 						backendTypeRemote: nil,
 						"vault":           nil,
@@ -423,15 +398,10 @@ func TestProcessComponentConfigs(t *testing.T) {
 							"resource_group_name":  "rg-terraform-state",
 							"storage_account_name": "staterraformstate",
 							"container_name":       "dev-tfstate",
-							"key":                  "dev.atmos",
+							"key":                  "dev.opsos",
 						},
 						backendTypeRemote: nil,
 						"vault":           nil,
-					},
-					Settings: map[string]any{
-						"spacelift": map[string]any{
-							"workspace_enabled": true,
-						},
 					},
 				},
 			},
@@ -470,7 +440,7 @@ func TestProcessComponentConfigs(t *testing.T) {
 							"resource_group_name":  "rg-terraform-state",
 							"storage_account_name": "staterraformstate",
 							"container_name":       "dev-tfstate",
-							"key":                  "dev.atmos",
+							"key":                  "dev.opsos",
 						},
 						backendTypeRemote: nil,
 						"vault":           nil,
@@ -491,15 +461,10 @@ func TestProcessComponentConfigs(t *testing.T) {
 							"resource_group_name":  "rg-terraform-state",
 							"storage_account_name": "staterraformstate",
 							"container_name":       "dev-tfstate",
-							"key":                  "dev.atmos",
+							"key":                  "dev.opsos",
 						},
 						backendTypeRemote: nil,
 						"vault":           nil,
-					},
-					Settings: map[string]any{
-						"spacelift": map[string]any{
-							"workspace_enabled": true,
-						},
 					},
 				},
 			},
@@ -533,7 +498,7 @@ func TestProcessComponentConfigs(t *testing.T) {
 							"resource_group_name":  "rg-terraform-state",
 							"storage_account_name": "staterraformstate",
 							"container_name":       "dev-tfstate",
-							"key":                  "dev.atmos",
+							"key":                  "dev.opsos",
 						},
 						backendTypeRemote: nil,
 						"vault":           nil,
@@ -554,7 +519,7 @@ func TestProcessComponentConfigs(t *testing.T) {
 							"resource_group_name":  "rg-terraform-state",
 							"storage_account_name": "staterraformstate",
 							"container_name":       "dev-tfstate",
-							"key":                  "dev.atmos",
+							"key":                  "dev.opsos",
 						},
 						backendTypeRemote: nil,
 						"vault":           nil,
@@ -600,7 +565,7 @@ func TestProcessComponentConfigs(t *testing.T) {
 							"resource_group_name":  "rg-terraform-state",
 							"storage_account_name": "staterraformstate",
 							"container_name":       "dev-tfstate",
-							"key":                  "dev.atmos",
+							"key":                  "dev.opsos",
 						},
 						backendTypeRemote: nil,
 						"vault":           nil,
@@ -621,7 +586,7 @@ func TestProcessComponentConfigs(t *testing.T) {
 							"resource_group_name":  "rg-terraform-state",
 							"storage_account_name": "staterraformstate",
 							"container_name":       "dev-tfstate",
-							"key":                  "dev.atmos",
+							"key":                  "dev.opsos",
 						},
 						backendTypeRemote: nil,
 						"vault":           nil,
@@ -630,12 +595,6 @@ func TestProcessComponentConfigs(t *testing.T) {
 							"val2": "5",
 							"val3": 7,
 							"val4": nil,
-						},
-					},
-					Settings: map[string]any{
-						"spacelift": map[string]any{
-							"workspace_enabled":  true,
-							"stack_name_pattern": "{{.tenant}}-{{.environment}}-{{.stage}}-new-component",
 						},
 					},
 				},

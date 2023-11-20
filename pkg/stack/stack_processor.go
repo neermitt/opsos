@@ -41,10 +41,15 @@ type ConfigWithMetadata struct {
 	Metadata               *schema.Metadata  `yaml:"metadata,omitempty" json:"metadata,omitempty" mapstructure:"metadata,omitempty"`
 }
 
+type GetStackOptions struct {
+	ComponentTypes []string
+	Components     []string
+}
+
 type StackProcessor interface {
 	GetStackNames() ([]string, error)
-	GetStack(name string, component *Component) (*Stack, error)
-	GetStacks(names []string) ([]*Stack, error)
+	GetStack(name string, options GetStackOptions) (*Stack, error)
+	GetStacks(names []string, options GetStackOptions) ([]*Stack, error)
 }
 
 func NewStackProcessor(source afero.Fs, includePaths []string, excludePaths []string, stackNamePattern string) StackProcessor {
@@ -87,22 +92,22 @@ func (sp *stackProcessor) GetStackNames() ([]string, error) {
 	return files, err
 }
 
-func (sp *stackProcessor) GetStack(name string, component *Component) (*Stack, error) {
+func (sp *stackProcessor) GetStack(name string, options GetStackOptions) (*Stack, error) {
 	stackConfig, err := sp.loadAndProcessStackFile(name)
 	if err != nil {
 		return nil, err
 	}
-	return sp.processStackConfig(stackConfig, component)
+	return sp.processStackConfig2(stackConfig, options)
 }
 
-func (sp *stackProcessor) GetStacks(names []string) ([]*Stack, error) {
+func (sp *stackProcessor) GetStacks(names []string, options GetStackOptions) ([]*Stack, error) {
 	stkConfigs, err := sp.checkCacheOrLoadStackFiles(names)
 	if err != nil {
 		return nil, err
 	}
 	out := make([]*Stack, len(stkConfigs))
 	for i, stkConfig := range stkConfigs {
-		stk, err := sp.processStackConfig(stkConfig, nil)
+		stk, err := sp.processStackConfig2(stkConfig, options)
 		if err != nil {
 			return nil, err
 		}
@@ -256,6 +261,63 @@ func (sp *stackProcessor) processStackConfig(stk *stack, component *Component) (
 		var componentsToProcess []string
 		if component != nil && component.Name != "" {
 			componentsToProcess = []string{component.Name}
+		} else {
+			for k := range stackConfig.Components.Types[componentType] {
+				componentsToProcess = append(componentsToProcess, k)
+			}
+		}
+
+		componentsMap := ComponentConfigMap{}
+		for _, k := range componentsToProcess {
+			componentProcessedConfig, err := processComponentConfigs(stk.name, componentTypeBaseConfig, stackConfig.Components.Types[componentType], k)
+			if err != nil {
+				return nil, err
+			}
+			configWithMetadata, err := toProcessedConfig(stk.name, k, componentProcessedConfig)
+			if err != nil {
+				return nil, err
+			}
+			componentsMap[k] = configWithMetadata
+		}
+
+		processedComponentConfigs[componentType] = componentsMap
+	}
+
+	return &Stack{Id: stk.name, Name: stackName, Components: processedComponentConfigs, Vars: stackConfig.Vars}, nil
+}
+
+func (sp *stackProcessor) processStackConfig2(stk *stack, options GetStackOptions) (*Stack, error) {
+	var stackConfig schema.StackConfig
+	err := mapstructure.Decode(stk.Config, &stackConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	stackName, err := sp.getStackName(stackConfig.Vars)
+	if err != nil {
+		return nil, err
+	}
+
+	var componentTypes []string
+	if len(options.ComponentTypes) != 0 {
+		componentTypes = options.ComponentTypes
+	} else {
+		for k := range stackConfig.ComponentTypeSettings {
+			componentTypes = append(componentTypes, k)
+		}
+	}
+
+	processedComponentConfigs := make(map[string]ComponentConfigMap, len(componentTypes))
+
+	for _, componentType := range componentTypes {
+		componentTypeBaseConfig, err := getBaseConfigForComponentType(stackConfig, componentType)
+		if err != nil {
+			return nil, err
+		}
+
+		var componentsToProcess []string
+		if len(options.Components) != 0 {
+			componentsToProcess = options.Components
 		} else {
 			for k := range stackConfig.Components.Types[componentType] {
 				componentsToProcess = append(componentsToProcess, k)

@@ -1,41 +1,39 @@
 {
 	"name": "opsos",
-	"image": "mcr.microsoft.com/vscode/devcontainers/base:bullseye",
+	"image": "mcr.microsoft.com/vscode/devcontainers/go:1.21-bookworm",
 	"features": {
-		"ghcr.io/devcontainers/features/common-utils:1": {
+		"ghcr.io/devcontainers/features/common-utils:2.2.0": {
             "version": "latest"
         },
-        "ghcr.io/devcontainers/features/docker-in-docker:1": {
-            "version": "20.10"
+        "ghcr.io/devcontainers/features/docker-in-docker:2.7.0": {
+            "version": "23.0"
         },
         "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {
-            "version": "1.25",
-            "helm": "3.9.4",
+            "version": "1.28",
+            "helm": "3.13.1",
             "minikube": "none"
         },
         "ghcr.io/devcontainers/features/terraform:1": {
-			"version": "1.2"
-		},
-		"ghcr.io/devcontainers/features/git:1": {
-			"version":"2.30.2"
-		},
-		"ghcr.io/devcontainers/features/go:1": {
-			"version":"1.19"
+			"version": "1.6.2"
 		},
 		"ghcr.io/neermitt/devcontainers-features/helmfile:1": {
             "version": "0.146.0"
         },
 		"ghcr.io/neermitt/devcontainers-features/kind:1": {
-            "version": "0.16.0"
+            "version": "0.20.0"
         },
 		"ghcr.io/neermitt/devcontainers-features/utils:1": {
-            "yq_version": "4.28.1"
+            "yq_version": "4.35.2"
         }
 	},
-	"extensions": [
-		"EditorConfig.EditorConfig",
-		"ms-vscode.makefile-tools"
-	],
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "EditorConfig.EditorConfig",
+                "ms-vscode.makefile-tools"
+            ]
+        }
+    },
 	"postCreateCommand": "helm plugin install https://github.com/databus23/helm-diff ",
 	"remoteUser": "vscode"
 }

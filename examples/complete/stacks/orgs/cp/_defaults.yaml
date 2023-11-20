@@ -19,7 +19,7 @@ terraform:
       resource_group_name: rg-terraform-state
       storage_account_name: staterraformstate
       container_name: dev-tfstate
-      key: dev.atmos
+      key: dev.opsos
     remote:
     vault:
 

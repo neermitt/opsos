@@ -11,9 +11,9 @@ var (
 
 // describeComponentCmd describes configuration for components
 var describeConfigCmd = &cobra.Command{
-	Use:                "config",
-	Short:              "Execute 'describe config' command",
-	Long:               `This command shows the final (deep-merged) CLI configuration: atmos describe config`,
+	Use:                "describe",
+	Short:              "Execute 'config describe' command",
+	Long:               `This command shows the final (deep-merged) CLI configuration: opsos config describe`,
 	FParseErrWhitelist: struct{ UnknownFlags bool }{UnknownFlags: true},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return exec.ExecuteDescribeConfig(cmd, descConfOptions)
@@ -23,5 +23,5 @@ var describeConfigCmd = &cobra.Command{
 func init() {
 	describeConfigCmd.PersistentFlags().StringVarP(&descConfOptions.Format, "format", "f", "yaml", "'json' or 'yaml'")
 
-	describeCmd.AddCommand(describeConfigCmd)
+	configCmd.AddCommand(describeConfigCmd)
 }

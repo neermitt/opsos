@@ -10,6 +10,8 @@ export README_DEPS ?= docs/targets.md
 
 -include $(shell curl -sSL -o .build-harness "https://cloudposse.tools/build-harness"; echo .build-harness)
 
+.DEFAULT_GOAL := help/short
+
 ## Lint terraform code
 lint:
 	$(SELF) terraform/install terraform/get-modules terraform/get-plugins terraform/lint terraform/validate
@@ -17,6 +19,7 @@ lint:
 get:
 	go get
 
+# Build opsos binary
 build: get
 	env GOOS=${GOOS} GOARCH=${GOARCH} go build -o build/opsos -v -ldflags "-X 'github.com/neermitt/opsos/cmd.Version=${VERSION}'"
 

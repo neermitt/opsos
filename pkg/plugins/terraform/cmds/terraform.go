@@ -1,4 +1,4 @@
-package cmd
+package cmds
 
 import (
 	"github.com/spf13/cobra"
@@ -11,6 +11,6 @@ var terraformCmd = &cobra.Command{
 	Long:  `This command runs terraform commands`,
 }
 
-func init() {
-	RootCmd.AddCommand(terraformCmd)
+func InitCommands(parentCmd *cobra.Command) {
+	parentCmd.AddCommand(terraformCmd)
 }
